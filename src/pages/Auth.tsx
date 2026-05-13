@@ -14,6 +14,7 @@ import { auth, db } from "@/lib/firebase";
 import {
   signInWithPopup,
   GoogleAuthProvider,
+  GithubAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
@@ -105,6 +106,50 @@ export default function Auth() {
     } catch (error: any) {
       if (error.code === "auth/operation-not-allowed") {
         toast.error("Google Sign-In is not enabled.");
+      } else {
+        toast.error("Authentication failed: " + error.message);
+      }
+      console.error(error);
+    }
+  };
+
+  const handleGithubAuth = async () => {
+    try {
+      const provider = new GithubAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      const userRef = doc(db, "users", result.user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        const referredBy =
+          mode === "signup" && referralCodeInput
+            ? await handleReferral(referralCodeInput)
+            : null;
+
+        await setDoc(userRef, {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName || "",
+          photoURL: result.user.photoURL || "",
+          role: "creator",
+          createdAt: serverTimestamp(),
+          platformFeeTier: 10,
+          referralCode: generateReferralCode(),
+          referralCount: 0,
+          referralBonuses: referredBy ? 10 : 0,
+          referredBy: referredBy || "",
+          setupComplete: false,
+        });
+        toast.success("Account created! Please set up your profile.");
+        navigate("/onboarding");
+      } else {
+        toast.success("Successfully authenticated!");
+        navigate("/dashboard");
+      }
+    } catch (error: any) {
+      if (error.code === "auth/operation-not-allowed") {
+        toast.error("GitHub Sign-In is not enabled. Please enable it in Firebase Console.");
       } else {
         toast.error("Authentication failed: " + error.message);
       }
@@ -243,13 +288,22 @@ export default function Auth() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Button
-              variant="outline"
-              className="w-full h-12 rounded-xl font-bold border-2"
-              onClick={handleGoogleAuth}
-            >
-              Continue with Google
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl font-bold border-2"
+                onClick={handleGoogleAuth}
+              >
+                Continue with Google
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl font-bold border-2 bg-slate-900 text-white hover:bg-slate-800 hover:text-white"
+                onClick={handleGithubAuth}
+              >
+                Continue with GitHub
+              </Button>
+            </div>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
