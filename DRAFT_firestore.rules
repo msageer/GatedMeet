@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Enterprise Grade User Validation ---
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             data.role in ['creator', 'admin'] &&
+             data.createdAt == request.time &&
+             (data.get('displayName', '') is string && data.get('displayName', '').size() <= 100) &&
+             (data.get('platformFeeTier', 10) >= 5 && data.get('platformFeeTier', 10) <= 20);
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn(); // Allow reading profiles for booking
+      allow list: if isAdmin();
+      
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      
+      allow update: if (isSignedIn() && isOwner(userId) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'bio', 'pricing', 'availability', 'walletAddress']) &&
+        incoming().role == existing().role // Cannot escalate role
+      )) || isAdmin();
+    }
+
+    // --- Booking Validation ---
+    function isValidBooking(data) {
+      return data.keys().hasAll(['creatorId', 'clientEmail', 'startTime', 'endTime', 'status', 'createdAt']) &&
+             isValidId(data.creatorId) &&
+             data.clientEmail is string && data.clientEmail.size() <= 256 &&
+             data.status in ['pending', 'paid', 'confirmed', 'cancelled'] &&
+             data.createdAt == request.time;
+    }
+
+    match /bookings/{bookingId} {
+      allow get: if isSignedIn() && (isOwner(existing().creatorId) || existing().clientEmail == request.auth.token.email || isAdmin());
+      allow list: if isSignedIn() && (isOwner(request.query.limit(1).creatorId) || isAdmin()); 
+      
+      // Clients can create bookings
+      allow create: if isValidBooking(incoming());
+      
+      allow update: if (isSignedIn() && (
+        // Creator can confirm or cancel
+        (isOwner(existing().creatorId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'meetingLink'])) ||
+        // Admin can do anything
+        isAdmin() ||
+        // System updates (simulated via strict status transitions)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'transactionId']) && existing().status == 'pending' && incoming().status == 'paid')
+      ));
+    }
+
+    // --- Transaction Validation ---
+    match /transactions/{transactionId} {
+      allow read: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow create: if isAdmin(); // Only system/admin can record transactions
+    }
+  }
+}

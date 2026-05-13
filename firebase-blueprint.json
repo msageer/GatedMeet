@@ -1,0 +1,113 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for creators and admins",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["creator", "admin"] },
+        "bio": { "type": "string" },
+        "pricing": {
+          "type": "object",
+          "properties": {
+            "price": { "type": "number" },
+            "currency": { "type": "string" },
+            "duration": { "type": "number", "description": "Duration in minutes" }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "description": "Weekly availability schedule"
+        },
+        "walletAddress": { "type": "string" },
+        "platformFeeTier": { "type": "number", "description": "Service fee percentage (5-10)" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "A scheduled session between a client and a creator",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "clientName": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "paid", "confirmed", "cancelled"] },
+        "paymentType": { "type": "string", "enum": ["fiat", "crypto"] },
+        "amount": { "type": "number" },
+        "platformFee": { "type": "number" },
+        "meetingLink": { "type": "string" },
+        "transactionId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "clientEmail", "startTime", "endTime", "status"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Payment and payout records",
+      "type": "object",
+      "properties": {
+        "bookingId": { "type": "string" },
+        "userId": { "type": "string", "description": "The creator's ID for payouts" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["payment", "payout"] },
+        "status": { "type": "string", "enum": ["success", "failed", "pending"] },
+        "method": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Payout": {
+      "title": "Payout",
+      "description": "Payout requests from creators",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["amount", "status", "timestamp"]
+    },
+    "Feedback": {
+      "title": "Feedback",
+      "description": "Feedback left by clients after a session",
+      "type": "object",
+      "properties": {
+        "creatorId": { "type": "string" },
+        "bookingId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["creatorId", "bookingId", "rating"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Creator and Admin profiles"
+    },
+    "/users/{userId}/payouts/{payoutId}": {
+      "schema": "Payout",
+      "description": "Payout requests for a specific user"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Session bookings"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Platform transactions"
+    },
+    "/feedbacks/{feedbackId}": {
+      "schema": "Feedback",
+      "description": "Client feedbacks"
+    }
+  }
+}
