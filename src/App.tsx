@@ -66,7 +66,7 @@ export default function App() {
       if (user) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (user.email === 'admin@test.com') {
+          if (user.email === 'msagirgroup@gmail.com') {
             setRole('admin');
           } else if (userDoc.exists()) {
             console.log('App.tsx: Found user doc:', userDoc.data());

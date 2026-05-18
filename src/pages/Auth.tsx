@@ -207,66 +207,6 @@ export default function Auth() {
     }
   };
 
-  const handleAdminDemoLogin = async () => {
-    setLoading(true);
-    try {
-      const creds = await signInWithEmailAndPassword(
-        auth,
-        "admin@test.com",
-        "admin123",
-      );
-      // Ensure the admin document exists just in case
-      const userRef = doc(db, "users", creds.user.uid);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) {
-        await setDoc(userRef, {
-          uid: creds.user.uid,
-          email: creds.user.email,
-          role: "admin",
-          createdAt: serverTimestamp(),
-          platformFeeTier: 10,
-        });
-      }
-      toast.success("Logged in as Admin!");
-      navigate("/admin");
-    } catch (error: any) {
-      if (
-        error.code === "auth/user-not-found" ||
-        error.code === "auth/invalid-credential" ||
-        error.code === "auth/invalid-login-credentials"
-      ) {
-        try {
-          const result = await createUserWithEmailAndPassword(
-            auth,
-            "admin@test.com",
-            "admin123",
-          );
-          await setDoc(doc(db, "users", result.user.uid), {
-            uid: result.user.uid,
-            email: result.user.email,
-            role: "admin",
-            createdAt: serverTimestamp(),
-            platformFeeTier: 10,
-          });
-          toast.success("Admin Demo created & logged in!");
-          navigate("/admin");
-        } catch (err: any) {
-          toast.error("Admin setup failed: " + err.message);
-        }
-      } else {
-        if (error.code === "auth/operation-not-allowed") {
-          toast.error(
-            "Email & Password sign-in is not enabled. Please enable it in Firebase Console.",
-          );
-        } else {
-          toast.error(error.message);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="max-w-md mx-auto pt-12">
       <motion.div
@@ -377,28 +317,6 @@ export default function Auth() {
                 {mode === "login"
                   ? "Don't have an account? Sign up"
                   : "Already have an account? Log in"}
-              </Button>
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex flex-col gap-2 items-center text-center">
-              <div className="text-xs text-slate-500 font-medium">
-                Admin Demo Credentials:
-                <br />
-                <span className="font-mono text-slate-700 bg-slate-100 px-1 py-0.5 rounded">
-                  admin@test.com
-                </span>{" "}
-                /{" "}
-                <span className="font-mono text-slate-700 bg-slate-100 px-1 py-0.5 rounded">
-                  admin123
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAdminDemoLogin}
-                className="text-xs w-full"
-              >
-                Auto-Login as Admin
               </Button>
             </div>
           </CardContent>

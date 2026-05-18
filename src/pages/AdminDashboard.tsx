@@ -34,6 +34,7 @@ import {
   limit,
   doc,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import {
   BarChart3,
@@ -46,6 +47,7 @@ import {
   X,
   Eye,
   Search,
+  Trash2,
 } from "lucide-react";
 import { Transaction, UserProfile, PayoutRequest } from "../types";
 import { toast } from "sonner";
@@ -133,6 +135,22 @@ export default function AdminDashboard() {
       fetchData();
     } catch (err: any) {
       toast.error("Failed to update role: " + err.message);
+    }
+  };
+
+  const handleDeleteUser = async (uid: string, email: string) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to PERMANENTLY delete user ${email}? This only removes their data from Firestore, not from Firebase Auth.`,
+      )
+    )
+      return;
+    try {
+      await deleteDoc(doc(db, "users", uid));
+      toast.success(`User ${email} deleted from database`);
+      fetchData();
+    } catch (err: any) {
+      toast.error("Failed to delete user: " + err.message);
     }
   };
 
@@ -489,6 +507,14 @@ export default function AdminDashboard() {
                         >
                           <Settings className="w-4 h-4 mr-1" />
                           {u.role === "admin" ? "Revoke Admin" : "Make Admin"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteUser(u.uid, u.email)}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
