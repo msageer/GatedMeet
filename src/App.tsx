@@ -111,7 +111,7 @@ export default function App() {
           
           {/* Protected Admin Routes */}
           <Route path="/admin" element={role === 'admin' ? <AdminDashboard /> : <div className="p-12 text-center">Unauthorized</div>} />
-          <Route path="/admin-setup" element={<AdminSetup />} />
+          <Route path="/admin-setup" element={user?.email === 'msagirgroup@gmail.com' ? <AdminSetup /> : <div className="p-12 text-center">Restricted Access</div>} />
         </Routes>
       </main>
       <Toaster position="bottom-right" richColors />

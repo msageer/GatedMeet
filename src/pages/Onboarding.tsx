@@ -47,6 +47,16 @@ export default function Onboarding() {
   const handleFinish = async () => {
     if (!auth.currentUser) return;
     setLoading(true);
+    const DAYS = [
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+      "sunday",
+    ];
+
     try {
       await updateDoc(doc(db, 'users', auth.currentUser.uid), {
         displayName: formData.displayName,
@@ -54,7 +64,19 @@ export default function Onboarding() {
         pricing: { price: formData.price, currency: 'USD', duration: formData.duration },
         walletAddress: formData.walletAddress,
         meetingUrl: formData.meetingUrl,
-        setupComplete: true
+        setupComplete: true,
+        platformFeeTier: 10,
+        availability: DAYS.reduce(
+          (acc, day) => ({
+            ...acc,
+            [day]: {
+              enabled: day !== "saturday" && day !== "sunday",
+              slots: [{ start: "09:00", end: "17:00" }],
+            },
+          }),
+          {} as any,
+        ),
+        createdAt: new Date().toISOString(),
       });
       toast.success('Profile setup complete!');
       navigate('/dashboard');

@@ -26,6 +26,8 @@ import {
   orderBy,
   limit,
   doc,
+  addDoc,
+  serverTimestamp,
   updateDoc,
   getDoc,
 } from "firebase/firestore";
@@ -40,16 +42,18 @@ import {
   XCircle,
   BarChart as BarChartIcon,
   TrendingUp,
-  Star
+  Star,
+  Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import { Booking } from "../types";
 import { Calendar } from "@/components/ui/calendar";
-import { format, subDays, isSameDay } from "date-fns";
+import { format, subDays, isSameDay, addHours } from "date-fns";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, Legend } from 'recharts';
 
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { createNotification } from "@/lib/notifications";
 
 const COLORS = ['#8b5cf6', '#e2e8f0'];
 
@@ -215,7 +219,16 @@ export default function Dashboard() {
 
       const bObj = bookings.find((b) => b.id === bookingId);
       if (bObj) {
-        // Notify client
+        // Notification to client
+        await createNotification({
+          userId: bObj.clientEmail, // Using email as fallback for client userId if they don't have profile yet, or better, we should have clientUid if possible. But for now we use clientEmail for identification if they are guest.
+          title: "Booking Cancelled",
+          message: `Your booking with the creator for ${new Date(bObj.startTime).toLocaleString()} has been cancelled.`,
+          type: "cancellation",
+          relatedBookingId: bookingId
+        });
+
+        // Notify client via email
         await fetch("/api/send-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -231,6 +244,47 @@ export default function Dashboard() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to cancel booking.");
+    }
+  };
+
+  const rescheduleBooking = async (booking: Booking) => {
+    const newDateStr = window.prompt("Enter new date/time (YYYY-MM-DD HH:MM):", format(new Date(booking.startTime), "yyyy-MM-dd HH:mm"));
+    if (!newDateStr) return;
+
+    try {
+      const newStartTime = new Date(newDateStr).toISOString();
+      const newEndTime = addHours(new Date(newStartTime), 1).toISOString(); // Default 1hr
+
+      await updateDoc(doc(db, "bookings", booking.id!), {
+        startTime: newStartTime,
+        endTime: newEndTime,
+        status: "rescheduled"
+      });
+
+      // Notification to client
+      await createNotification({
+        userId: booking.clientEmail,
+        title: "Booking Rescheduled",
+        message: `Your booking has been rescheduled to ${new Date(newStartTime).toLocaleString()}.`,
+        type: "reschedule",
+        relatedBookingId: booking.id
+      });
+
+      // Email to client
+      await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: booking.clientEmail,
+          subject: `Booking Rescheduled`,
+          html: `<p>Hi ${booking.clientName},</p><p>Your session has been rescheduled by the creator to <b>${new Date(newStartTime).toLocaleString()}</b>.</p>`,
+        }),
+      });
+
+      toast.success("Booking rescheduled!");
+      fetchBookings();
+    } catch (err: any) {
+      toast.error("Reschedule failed: " + err.message);
     }
   };
 
@@ -512,6 +566,15 @@ export default function Dashboard() {
                         )}
                       </div>
                       <div className="flex gap-2 items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => rescheduleBooking(b)}
+                          className="h-6 text-xs text-indigo-600 hover:text-indigo-800"
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Reschedule
+                        </Button>
                         <span className="text-xs bg-slate-100 px-2 py-1 rounded-md text-slate-600 font-medium">
                           {format(new Date(b.startTime), "HH:mm")}
                         </span>
@@ -609,7 +672,7 @@ export default function Dashboard() {
                         <TableCell className="capitalize">
                           {booking.paymentType}
                         </TableCell>
-                        <TableCell className="text-right">
+                         <TableCell className="text-right">
                           {booking.status !== "cancelled" &&
                           booking.status !== "pending" ? (
                             <div className="flex items-center justify-end gap-2">
@@ -628,7 +691,15 @@ export default function Dashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => cancelBooking(booking.id)}
+                                onClick={() => rescheduleBooking(booking)}
+                                className="text-indigo-600 hover:text-indigo-800"
+                              >
+                                Reschedule
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => cancelBooking(booking.id!)}
                                 className="text-red-500 hover:text-red-700"
                               >
                                 Cancel

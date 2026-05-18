@@ -31,13 +31,24 @@ export interface Booking {
   clientDetails?: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'paid' | 'confirmed' | 'cancelled';
+  status: 'pending' | 'paid' | 'confirmed' | 'cancelled' | 'rescheduled';
   paymentType: 'fiat' | 'crypto';
   amount: number;
   platformFee: number;
   meetingLink?: string;
   transactionId?: string;
   createdAt: string;
+}
+
+export interface AppNotification {
+  id?: string;
+  userId: string; // The user who receives the notification
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'success' | 'reschedule' | 'cancellation';
+  read: boolean;
+  timestamp: any;
+  relatedBookingId?: string;
 }
 
 export interface Transaction {

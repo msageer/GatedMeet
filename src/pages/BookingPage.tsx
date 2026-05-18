@@ -134,7 +134,14 @@ export default function BookingPage() {
       "friday",
       "saturday",
     ][dateObj.getDay()];
-    const availability = creator.availability?.[dayOfWeek];
+
+    // Provide default fallback if availability is completely missing
+    const defaultAvailability = {
+      enabled: dayOfWeek !== "saturday" && dayOfWeek !== "sunday",
+      slots: [{ start: "09:00", end: "17:00" }]
+    };
+
+    const availability = creator.availability?.[dayOfWeek] || defaultAvailability;
 
     if (!availability || !availability.enabled || !availability.slots)
       return [];
@@ -426,7 +433,13 @@ export default function BookingPage() {
                             "friday",
                             "saturday",
                           ][date.getDay()];
-                          return !creator.availability?.[dayOfWeek]?.enabled;
+                          
+                          // If availability is missing, assume Mon-Fri are enabled by default
+                          if (!creator.availability || !creator.availability[dayOfWeek]) {
+                            return dayOfWeek === "saturday" || dayOfWeek === "sunday";
+                          }
+                          
+                          return !creator.availability[dayOfWeek].enabled;
                         }}
                         className="pointer-events-auto"
                       />

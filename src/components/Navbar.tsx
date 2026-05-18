@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { LayoutDashboard, Wallet, User as UserIcon, LogOut, ShieldCheck, Settings } from 'lucide-react';
+import { LayoutDashboard, Wallet, User as UserIcon, LogOut, ShieldCheck, Settings, Bell } from 'lucide-react';
 import { auth } from '@/lib/firebase';
+import NotificationCenter from './NotificationCenter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ export default function Navbar({ user, role }: NavbarProps) {
         </Link>
 
         <div className="flex items-center gap-4">
+          {user && <NotificationCenter userId={user.email || user.uid} />}
           {user ? (
             <div className="flex items-center gap-2">
               <DropdownMenu>
