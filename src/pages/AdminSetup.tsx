@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword 
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail 
 } from "firebase/auth";
 import { 
   doc, 
@@ -31,7 +32,7 @@ export default function AdminSetup() {
         user = result.user;
         toast.success("Admin account created successfully!");
       } catch (error: any) {
-        if (error.code === "auth/email-already-in-use") {
+        if (error.code === "auth/email-already-in-use" || error.code === "auth/credential-already-in-use") {
           // 2. If already exists, try to sign in to confirm password
           const result = await signInWithEmailAndPassword(auth, adminEmail, password);
           user = result.user;
@@ -56,8 +57,10 @@ export default function AdminSetup() {
       }
     } catch (error: any) {
       console.error("Admin setup failed:", error);
-      if (error.code === "auth/network-request-failed") {
-          toast.error("Network error. Please check your connection or wait a moment.");
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+          toast.error("Incorrect password for existing account. Use the 'Reset Password' button below if needed.");
+      } else if (error.code === "auth/network-request-failed") {
+          toast.error("Network error. Please check your connection.");
       } else {
           toast.error("Admin setup failed: " + error.message);
       }
@@ -66,8 +69,17 @@ export default function AdminSetup() {
     }
   };
 
+  const handleResetPassword = async () => {
+    try {
+      await sendPasswordResetEmail(auth, adminEmail);
+      toast.success("Password reset email sent to " + adminEmail);
+    } catch (error: any) {
+      toast.error("Failed to send reset email: " + error.message);
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto pt-20">
+    <div className="max-w-md mx-auto pt-20 pb-20">
       <Card className="border-primary/20 shadow-2xl shadow-primary/10">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
@@ -103,6 +115,14 @@ export default function AdminSetup() {
             disabled={loading}
           >
             {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Bootstrap Admin Account"}
+          </Button>
+
+          <Button 
+            variant="outline"
+            className="w-full"
+            onClick={handleResetPassword}
+          >
+            Reset Admin Password
           </Button>
 
           <p className="text-center text-[10px] text-slate-400 font-mono uppercase tracking-widest">

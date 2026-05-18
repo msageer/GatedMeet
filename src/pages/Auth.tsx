@@ -18,6 +18,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendEmailVerification,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import {
   setDoc,
@@ -207,6 +208,19 @@ export default function Auth() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success("Password reset email sent to " + email);
+    } catch (error: any) {
+      toast.error("Failed to send reset email: " + error.message);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto pt-12">
       <motion.div
@@ -270,7 +284,19 @@ export default function Auth() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  {mode === "login" && (
+                    <Button 
+                      variant="link" 
+                      className="px-0 h-auto text-xs text-slate-500"
+                      onClick={handleResetPassword}
+                      type="button"
+                    >
+                      Forgot password?
+                    </Button>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"
