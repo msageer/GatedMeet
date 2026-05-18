@@ -20,6 +20,7 @@ import CryptoPayment from './pages/CryptoPayment';
 import CustomPayment from './pages/CustomPayment';
 import PaymentSuccess from './pages/PaymentSuccess';
 import Onboarding from './pages/Onboarding';
+import AdminSetup from './pages/AdminSetup';
 import Navbar from './components/Navbar';
 
 
@@ -110,6 +111,7 @@ export default function App() {
           
           {/* Protected Admin Routes */}
           <Route path="/admin" element={role === 'admin' ? <AdminDashboard /> : <div className="p-12 text-center">Unauthorized</div>} />
+          <Route path="/admin-setup" element={<AdminSetup />} />
         </Routes>
       </main>
       <Toaster position="bottom-right" richColors />

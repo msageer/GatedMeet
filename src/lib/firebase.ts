@@ -1,13 +1,24 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { initializeFirestore } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, indexedDBLocalPersistence, setPersistence } from 'firebase/auth';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
+
+// Configure Firestore with production-ready persistence
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
 }, firebaseConfig.firestoreDatabaseId);
+
 export const auth = getAuth(app);
+
+// Attempt to set persistence to handle network drops in the preview iframe
+setPersistence(auth, indexedDBLocalPersistence).catch((err) => {
+  console.warn("Auth persistence failed:", err);
+});
 
 export enum OperationType {
   CREATE = 'create',

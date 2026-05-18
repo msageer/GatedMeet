@@ -319,6 +319,17 @@ export default function Auth() {
                   : "Already have an account? Log in"}
               </Button>
             </div>
+
+            <div className="pt-4 border-t border-slate-100 flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/admin-setup")}
+                className="text-[10px] uppercase tracking-widest text-slate-400 hover:text-primary transition-colors"
+              >
+                Admin Gateway
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

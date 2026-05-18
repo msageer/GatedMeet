@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
@@ -184,14 +186,52 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <header>
-        <h1 className="text-4xl font-display font-extrabold tracking-tight">
-          Master Admin
-        </h1>
-        <p className="text-slate-500 text-lg">
-          Platform health and revenue overview.
-        </p>
+      <header className="flex justify-between items-start">
+        <div>
+          <h1 className="text-4xl font-display font-extrabold tracking-tight">
+            Master Admin
+          </h1>
+          <p className="text-slate-500 text-lg">
+            Platform health and revenue overview.
+          </p>
+        </div>
+        <div className="flex gap-2">
+           <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")}>
+             Admin Setup
+           </Button>
+           <Button variant="outline" size="sm" onClick={fetchData}>
+             Refresh
+           </Button>
+        </div>
       </header>
+
+      {/* Quick Actions */}
+      <Card className="rounded-[2rem] border-2 border-red-100 bg-red-50/10">
+        <CardHeader>
+          <CardTitle className="text-sm uppercase tracking-widest text-red-900">Emergency & Batch Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-4">
+           <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => {
+              const emails = ["msageertv@gmail.com", "msageeroffice@gmail.com"];
+              if (window.confirm(`Delete data for the following users? \n${emails.join("\n")}`)) {
+                emails.forEach(async (email) => {
+                  const u = users.find(user => user.email === email);
+                  if (u) {
+                    await handleDeleteUser(u.uid, u.email);
+                  } else {
+                    toast.error(`User ${email} not found in database.`);
+                  }
+                });
+              }
+            }}
+           >
+             Cleanup Requested Users
+           </Button>
+        </CardContent>
+      </Card>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
