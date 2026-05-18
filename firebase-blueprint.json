@@ -24,6 +24,9 @@
           "description": "Weekly availability schedule"
         },
         "walletAddress": { "type": "string" },
+        "tonAddress": { "type": "string" },
+        "solanaAddress": { "type": "string" },
+        "baseAddress": { "type": "string" },
         "platformFeeTier": { "type": "number", "description": "Service fee percentage (5-10)" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -86,9 +89,25 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["creatorId", "bookingId", "rating"]
+    },
+    "SystemSettings": {
+      "title": "System Settings",
+      "description": "Global platform configurations",
+      "type": "object",
+      "properties": {
+        "flutterwavePublicKey": { "type": "string" },
+        "merchantTonAddress": { "type": "string" },
+        "merchantSolanaAddress": { "type": "string" },
+        "merchantBaseAddress": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
+    "/settings/{settingId}": {
+      "schema": "SystemSettings",
+      "description": "Global system configurations"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "Creator and Admin profiles"

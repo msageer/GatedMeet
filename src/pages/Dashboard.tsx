@@ -55,7 +55,7 @@ import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { createNotification } from "@/lib/notifications";
 
-const COLORS = ['#8b5cf6', '#e2e8f0'];
+const COLORS = ['#1e3a8a', '#e2e8f0']; // Navy Blue and Slate
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -417,12 +417,12 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
              <div>
                <CardTitle className="flex items-center gap-2">
-                 <BarChartIcon className="w-5 h-5 text-purple-500" />
+                 <BarChartIcon className="w-5 h-5 text-blue-500" />
                  Bookings Over Time
                </CardTitle>
                <CardDescription>Bookings received over the last 7 days</CardDescription>
              </div>
-             <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl font-bold text-sm">
+             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm">
                 <TrendingUp className="w-4 h-4" />
                 {stats.totalBookings} Total
              </div>
@@ -451,7 +451,7 @@ export default function Dashboard() {
         <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
-               <Users className="w-5 h-5 text-indigo-500" />
+               <Users className="w-5 h-5 text-blue-500" />
                Client Retention
             </CardTitle>
             <CardDescription>{stats.retentionRate}% Return Rate</CardDescription>
@@ -507,10 +507,10 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar / Upcoming Sessions */}
-        <Card className="col-span-1 border-2 rounded-[2.5rem] bg-indigo-50/50 flex flex-col justify-between">
+        <Card className="col-span-1 border-2 rounded-[2.5rem] bg-blue-50/50 flex flex-col justify-between">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-indigo-500" />
+              <CalendarIcon className="w-5 h-5 text-blue-500" />
               Schedule
             </CardTitle>
             <CardDescription>
@@ -551,9 +551,9 @@ export default function Dashboard() {
                 getDayBookings(selectedDate).map((b) => (
                   <div
                     key={b.id}
-                    className="p-3 bg-white rounded-xl border border-indigo-100 flex flex-col shadow-sm relative overflow-hidden group"
+                    className="p-3 bg-white rounded-xl border border-blue-100 flex flex-col shadow-sm relative overflow-hidden group"
                   >
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-400"></div>
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-400"></div>
                     <div className="flex justify-between items-center pl-2">
                       <div className="flex flex-col">
                         <span className="font-bold text-sm text-slate-800 truncate">

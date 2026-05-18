@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -34,6 +35,8 @@ import {
   orderBy,
   limit,
   doc,
+  getDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
 } from "firebase/firestore";
@@ -67,10 +70,23 @@ export default function AdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [systemSettings, setSystemSettings] = useState<any>({
+    flutterwavePublicKey: "",
+    merchantTonAddress: "",
+    merchantSolanaAddress: "",
+    merchantBaseAddress: "",
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
   const navigate = useNavigate();
 
   const fetchData = async () => {
     try {
+      // Fetch settings
+      const settingsSnap = await getDoc(doc(db, "settings", "global"));
+      if (settingsSnap.exists()) {
+        setSystemSettings(settingsSnap.data());
+      }
+
       // Fetch users
       const usersSnap = await getDocs(collection(db, "users"));
       const usersData = usersSnap.docs.map((d) => d.data() as UserProfile);
@@ -172,6 +188,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSaveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await setDoc(doc(db, "settings", "global"), {
+        ...systemSettings,
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success("System settings updated!");
+    } catch (err: any) {
+      toast.error("Failed to save settings: " + err.message);
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const pendingPayouts = payouts.filter((p) => p.status === "pending");
   const totalPendingAmount = pendingPayouts.reduce(
     (acc, p) => acc + p.amount,
@@ -206,32 +237,43 @@ export default function AdminDashboard() {
       </header>
 
       {/* Quick Actions */}
-      <Card className="rounded-[2rem] border-2 border-red-100 bg-red-50/10">
-        <CardHeader>
-          <CardTitle className="text-sm uppercase tracking-widest text-red-900">Emergency & Batch Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
-           <Button 
-            variant="destructive" 
-            size="sm"
-            onClick={() => {
-              const emails = ["msageertv@gmail.com", "msageeroffice@gmail.com"];
-              if (window.confirm(`Delete data for the following users? \n${emails.join("\n")}`)) {
-                emails.forEach(async (email) => {
-                  const u = users.find(user => user.email === email);
-                  if (u) {
-                    await handleDeleteUser(u.uid, u.email);
-                  } else {
-                    toast.error(`User ${email} not found in database.`);
-                  }
-                });
-              }
-            }}
-           >
-             Cleanup Requested Users
-           </Button>
-        </CardContent>
-      </Card>
+      <div className="grid md:grid-cols-2 gap-6">
+        <Card className="rounded-[2rem] border-2 border-red-100 bg-red-50/10">
+          <CardHeader>
+            <CardTitle className="text-sm uppercase tracking-widest text-red-900">Emergency & Batch Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-4">
+             <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => {
+                const emails = ["msageertv@gmail.com", "msageeroffice@gmail.com"];
+                if (window.confirm(`Delete data for the following users? \n${emails.join("\n")}`)) {
+                  emails.forEach(async (email) => {
+                    const u = users.find(user => user.email === email);
+                    if (u) {
+                      await handleDeleteUser(u.uid, u.email);
+                    } else {
+                      toast.error(`User ${email} not found in database.`);
+                    }
+                  });
+                }
+              }}
+             >
+               Cleanup Requested Users
+             </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-2 border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-sm uppercase tracking-widest text-primary">System Config Quick Tools</CardTitle>
+          </CardHeader>
+          <CardContent>
+             <p className="text-xs text-slate-500 italic">Global settings controls are located at the bottom of the dashboard.</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -258,7 +300,7 @@ export default function AdminDashboard() {
             label: "Pending Payouts",
             value: `$${totalPendingAmount.toLocaleString()}`,
             icon: Activity,
-            color: "text-orange-500",
+            color: "text-blue-500",
           },
         ].map((item, i) => (
           <Card key={i} className="rounded-3xl border-2">
@@ -279,9 +321,9 @@ export default function AdminDashboard() {
 
       <div className="grid md:grid-cols-3 gap-8">
         {/* Payout Management */}
-        <Card className="md:col-span-3 rounded-[2rem] border-2 shadow-sm border-orange-100 bg-orange-50/30">
+        <Card className="md:col-span-3 rounded-[2rem] border-2 shadow-sm border-blue-100 bg-blue-50/30">
           <CardHeader>
-            <CardTitle className="text-orange-900">
+            <CardTitle className="text-blue-900">
               Payout Requests ({pendingPayouts.length} Pending)
             </CardTitle>
             <CardDescription>
@@ -632,6 +674,70 @@ export default function AdminDashboard() {
                 )}
               </TableBody>
             </Table>
+          </CardContent>
+        </Card>
+
+        {/* Special Configuration Section */}
+        <Card className="md:col-span-2 rounded-[2rem] border-2 border-blue-100 shadow-xl overflow-hidden self-start">
+          <CardHeader className="bg-blue-50/50">
+            <CardTitle className="text-blue-900 flex items-center gap-2">
+              <Settings className="w-5 h-5" /> Special Configuration
+            </CardTitle>
+            <CardDescription>
+              Manage global payment keys and merchant wallet addresses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 space-y-6">
+            <div className="space-y-4">
+              <div className="grid gap-2">
+                <Label className="text-xs uppercase font-black text-slate-400">Flutterwave Public Key</Label>
+                <Input 
+                  value={systemSettings.flutterwavePublicKey} 
+                  onChange={(e) => setSystemSettings({...systemSettings, flutterwavePublicKey: e.target.value})}
+                  placeholder="FLWPUBK_TEST-..."
+                  className="font-mono"
+                />
+              </div>
+              
+              <div className="pt-4 border-t space-y-4">
+                <h4 className="text-sm font-bold text-slate-700 uppercase tracking-widest">Merchant Wallet Addresses</h4>
+                <div className="grid gap-2">
+                  <Label className="text-xs text-slate-500">TON Merchant Address</Label>
+                  <Input 
+                    value={systemSettings.merchantTonAddress} 
+                    onChange={(e) => setSystemSettings({...systemSettings, merchantTonAddress: e.target.value})}
+                    placeholder="EQ..."
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-xs text-slate-500">Solana Merchant Address</Label>
+                  <Input 
+                    value={systemSettings.merchantSolanaAddress} 
+                    onChange={(e) => setSystemSettings({...systemSettings, merchantSolanaAddress: e.target.value})}
+                    placeholder="Solana address..."
+                    className="font-mono text-xs"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label className="text-xs text-slate-500">Base (ETH/USDC) Merchant Address</Label>
+                  <Input 
+                    value={systemSettings.merchantBaseAddress} 
+                    onChange={(e) => setSystemSettings({...systemSettings, merchantBaseAddress: e.target.value})}
+                    placeholder="0x..."
+                    className="font-mono text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleSaveSettings} 
+              disabled={savingSettings}
+              className="w-full bg-blue-600 hover:bg-blue-700 font-bold"
+            >
+              {savingSettings ? "Saving..." : "Save Global Configuration"}
+            </Button>
           </CardContent>
         </Card>
       </div>

@@ -50,11 +50,12 @@ service cloud.firestore {
              data.role in ['creator', 'admin'] &&
              data.createdAt == request.time &&
              (data.get('displayName', '') is string && data.get('displayName', '').size() <= 100) &&
-             (data.get('platformFeeTier', 10) >= 5 && data.get('platformFeeTier', 10) <= 20) &&
-             (data.get('referralCode', '') is string) &&
-             (data.get('referredBy', '') is string) &&
-             (data.get('referralCount', 0) >= 0) &&
-             (data.get('referralBonuses', 0) >= 0);
+             (data.get('platformFeeTier', 10) >= 5 && data.get('platformFeeTier', 10) <= 20);
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /users/{userId} {
@@ -65,10 +66,9 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
       
       allow update: if (isSignedIn() && isOwner(userId) && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'bio', 'pricing', 'availability', 'walletAddress', 'meetingUrl', 'setupComplete', 'updatedAt', 'referralCode']) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'bio', 'pricing', 'availability', 'walletAddress', 'tonAddress', 'solanaAddress', 'baseAddress', 'meetingUrl', 'setupComplete', 'updatedAt']) &&
         incoming().role == existing().role
       )) || 
-      (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['referralCount', 'referralBonuses'])) || 
       isAdmin();
 
       allow delete: if isAdmin();
@@ -89,7 +89,7 @@ service cloud.firestore {
       return data.keys().hasAll(['creatorId', 'clientEmail', 'startTime', 'endTime', 'status', 'createdAt']) &&
              isValidId(data.creatorId) &&
              data.clientEmail is string && data.clientEmail.size() <= 256 &&
-             data.status in ['pending', 'paid', 'confirmed', 'cancelled'] &&
+             data.status in ['pending', 'paid', 'confirmed', 'cancelled', 'rescheduled'] &&
              data.createdAt == request.time &&
              (data.get('amount', 0) is number && data.get('amount', 0) >= 0);
     }

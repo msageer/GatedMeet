@@ -34,6 +34,9 @@ export default function Profile() {
     pricing: { price: 50, currency: "USD", duration: 60 },
     platformFeeTier: 10,
     walletAddress: "",
+    tonAddress: "",
+    solanaAddress: "",
+    baseAddress: "",
     referralCode: "",
     referralCount: 0,
     referralBonuses: 0,
@@ -104,6 +107,9 @@ export default function Profile() {
             },
             platformFeeTier: data.platformFeeTier || 10,
             walletAddress: data.walletAddress || "",
+            tonAddress: data.tonAddress || "",
+            solanaAddress: data.solanaAddress || "",
+            baseAddress: data.baseAddress || "",
             meetingUrl: data.meetingUrl || "",
             referralCode: currentReferralCode,
             referralCount: data.referralCount || 0,
@@ -517,12 +523,12 @@ export default function Profile() {
 
         <Card className="rounded-[2rem] border-2">
           <CardHeader>
-            <CardTitle>Web3 Wallet (Optional)</CardTitle>
+            <CardTitle>Crypto Wallets (Optional)</CardTitle>
             <CardDescription>
-              Receive stablecoin payments via TON Network.
+              Receive payments via various blockchain networks.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Platform Fee Tier (%)</Label>
               <div className="flex gap-4 items-center">
@@ -549,11 +555,33 @@ export default function Profile() {
             <div className="space-y-2">
               <Label>TON Wallet Address</Label>
               <Input
-                value={profile.walletAddress}
+                value={profile.tonAddress || profile.walletAddress || ""}
                 onChange={(e) =>
-                  setProfile({ ...profile, walletAddress: e.target.value })
+                  setProfile({ ...profile, tonAddress: e.target.value })
                 }
-                placeholder="UQA_..."
+                placeholder="TON address (EQ...)"
+                className="h-12 border-2 rounded-xl font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Solana Wallet Address</Label>
+              <Input
+                value={profile.solanaAddress || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, solanaAddress: e.target.value })
+                }
+                placeholder="Solana address..."
+                className="h-12 border-2 rounded-xl font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Base Network (ETH/USDC) Address</Label>
+              <Input
+                value={profile.baseAddress || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, baseAddress: e.target.value })
+                }
+                placeholder="Base/EVM address (0x...)"
                 className="h-12 border-2 rounded-xl font-mono"
               />
             </div>
@@ -623,9 +651,9 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2rem] border-2 bg-gradient-to-br from-indigo-50 to-purple-50">
+        <Card className="rounded-[2rem] border-2 bg-gradient-to-br from-blue-50 to-blue-100">
           <CardHeader>
-            <CardTitle className="text-indigo-900">Referral Program</CardTitle>
+            <CardTitle className="text-blue-900">Referral Program</CardTitle>
             <CardDescription>
               Invite other creators to earn a bonus!
             </CardDescription>
@@ -637,12 +665,12 @@ export default function Profile() {
                 <Input
                   readOnly
                   value={profile.referralCode || "Generating..."}
-                  className="h-12 border-2 border-indigo-200 rounded-xl font-mono font-bold text-lg text-indigo-700 bg-white"
+                  className="h-12 border-2 border-blue-200 rounded-xl font-mono font-bold text-lg text-blue-700 bg-white"
                 />
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-12 px-6 border-2 border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-100 font-bold rounded-xl"
+                  className="h-12 px-6 border-2 border-blue-200 bg-white text-blue-700 hover:bg-blue-100 font-bold rounded-xl"
                   onClick={() => {
                     navigator.clipboard.writeText(profile.referralCode || "");
                     toast.success("Referral code copied!");
@@ -653,15 +681,15 @@ export default function Profile() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 pt-4">
-              <div className="p-4 bg-white rounded-2xl border-2 border-indigo-100">
+              <div className="p-4 bg-white rounded-2xl border-2 border-blue-100">
                 <div className="text-sm text-slate-500 font-medium">
                   Referred Creators
                 </div>
-                <div className="text-2xl font-black text-indigo-900">
+                <div className="text-2xl font-black text-blue-900">
                   {profile.referralCount || 0}
                 </div>
               </div>
-              <div className="p-4 bg-white rounded-2xl border-2 border-indigo-100">
+              <div className="p-4 bg-white rounded-2xl border-2 border-blue-100">
                 <div className="text-sm text-slate-500 font-medium">
                   Total Bonus Earned
                 </div>
@@ -676,7 +704,7 @@ export default function Profile() {
         <Button
           type="submit"
           disabled={saving}
-          className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl shadow-orange-100"
+          className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl shadow-primary/10"
         >
           {saving ? "Saving..." : "Save Profile"}
         </Button>

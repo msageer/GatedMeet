@@ -189,10 +189,10 @@ export default function Wallet() {
 
       {/* Balance Cards */}
       <div className="grid md:grid-cols-4 gap-6">
-        <Card className="rounded-[2rem] border-2 bg-primary text-white shadow-xl shadow-orange-100">
+        <Card className="rounded-[2rem] border-2 bg-primary text-white shadow-xl shadow-primary/10">
           <CardContent className="pt-6 space-y-2">
             <DollarSign className="w-8 h-8 opacity-50" />
-            <p className="text-orange-100 font-medium">Available for Payout</p>
+            <p className="text-blue-100 font-medium">Available for Payout</p>
             <h3 className="text-4xl font-extrabold">
               ${balance.available.toFixed(2)}
             </h3>
@@ -200,7 +200,7 @@ export default function Wallet() {
               <DialogTrigger asChild>
                 <Button
                   variant="secondary"
-                  className="w-full mt-4 bg-white text-primary hover:bg-orange-50 font-bold rounded-xl"
+                  className="w-full mt-4 bg-white text-primary hover:bg-blue-50 font-bold rounded-xl"
                   disabled={requestingPayout || balance.available <= 0}
                 >
                   Request Payout
@@ -218,9 +218,9 @@ export default function Wallet() {
                     <span className="text-slate-500 font-medium">Available Balance</span>
                     <span className="text-xl font-bold text-slate-900">${balance.available.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                    <span className="text-indigo-700 font-medium">Requested Amount</span>
-                    <span className="text-xl font-bold text-indigo-700">${balance.available.toFixed(2)}</span>
+                  <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <span className="text-blue-700 font-medium">Requested Amount</span>
+                    <span className="text-xl font-bold text-blue-700">${balance.available.toFixed(2)}</span>
                   </div>
                 </div>
                 <DialogFooter className="flex gap-2">
@@ -258,7 +258,7 @@ export default function Wallet() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2 text-xs text-indigo-500 mt-2 font-bold uppercase">
+            <div className="flex items-center gap-2 text-xs text-blue-500 mt-2 font-bold uppercase">
               From invites
             </div>
           </CardContent>

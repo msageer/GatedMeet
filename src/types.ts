@@ -14,6 +14,9 @@ export interface UserProfile {
   };
   availability?: Record<string, { enabled: boolean; slots: { start: string; end: string }[] }>;
   walletAddress?: string;
+  tonAddress?: string;
+  solanaAddress?: string;
+  baseAddress?: string;
   platformFeeTier: number;
   referralCode?: string;
   referredBy?: string;

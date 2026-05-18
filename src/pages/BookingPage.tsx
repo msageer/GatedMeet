@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
+import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +58,7 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
+  const [systemSettings, setSystemSettings] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -77,8 +79,12 @@ export default function BookingPage() {
     const fetchCreator = async () => {
       if (!creatorId) return;
       try {
-        const d = await getDoc(doc(db, "users", creatorId));
+        const [d, s] = await Promise.all([
+          getDoc(doc(db, "users", creatorId)),
+          getDoc(doc(db, "settings", "global"))
+        ]);
         if (d.exists()) setCreator(d.data());
+        if (s.exists()) setSystemSettings(s.data());
       } catch (err) {
         console.error(err);
       } finally {
@@ -225,12 +231,36 @@ export default function BookingPage() {
     return dates;
   };
 
+  const totalSessionsCount = formData.recurring !== "none" ? formData.sessionsCount : 1;
+  const totalAmountValue = formData.billingMode === "recurring" 
+      ? (creator?.pricing?.price || 0)
+      : (creator?.pricing?.price || 0) * totalSessionsCount;
+
+  const flutterConfig = {
+    public_key: systemSettings?.flutterwavePublicKey || "",
+    tx_ref: Date.now().toString(),
+    amount: totalAmountValue,
+    currency: "USD",
+    payment_options: "card,mobilemoney,ussd",
+    customer: {
+      email: formData.email,
+      phone_number: "",
+      name: formData.name,
+    },
+    customizations: {
+      title: "Coach Session Booking",
+      description: `Payment for ${totalSessionsCount} session(s) with ${creator?.displayName}`,
+      logo: "https://st2.depositphotos.com/4403291/7418/v/450/depositphotos_74189661-stock-illustration-online-shop-log.jpg",
+    },
+  };
+
+  const handleFlutterPayment = useFlutterwave(flutterConfig);
+
   const executeBooking = async () => {
     setShowConfirmDialog(false);
-    if (!formData.date || !paymentMethod) return;
+    if (!formData.date || !paymentMethod || !creator) return;
 
     try {
-      const dates = getScheduledDates();
       const isRecurring = formData.recurring !== "none";
       const totalSessions = isRecurring ? formData.sessionsCount : 1;
       const intervalDays =
@@ -240,9 +270,6 @@ export default function BookingPage() {
             ? 14
             : 0;
       let firstDocId = "";
-      let lastDateString = "";
-
-      const dateString = format(formData.date, "yyyy-MM-dd");
 
       for (let i = 0; i < totalSessions; i++) {
         // Calculate date for this session
@@ -274,14 +301,7 @@ export default function BookingPage() {
         if (i === 0) {
           firstDocId = docRef.id;
         }
-        if (i === totalSessions - 1) {
-          lastDateString = sessionDateString;
-        }
       }
-
-      const totalAmount = formData.billingMode === "recurring" 
-          ? creator.pricing.price 
-          : creator.pricing.price * totalSessions;
 
       if (paymentMethod === "crypto") {
         toast.info("Redirecting to crypto payment...");
@@ -289,28 +309,26 @@ export default function BookingPage() {
         return;
       }
 
-      toast.info(`Preparing checkout...`);
+      if (!systemSettings?.flutterwavePublicKey) {
+         toast.error("Flutterwave is not configured by admin.");
+         return;
+      }
 
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amountUsd: totalAmount,
-          creatorName: creator.displayName + (formData.billingMode === "recurring" ? " (Subscription Setup)" : ""),
-          bookingIds: [firstDocId],
-          customerEmail: formData.email,
-          customerName: formData.name,
-          successUrl: `${window.location.origin}/success?creatorId=${creatorId}&bookingId=${firstDocId}`,
-          cancelUrl: `${window.location.origin}/booking/${creatorId}`,
-        }),
+      handleFlutterPayment({
+        callback: (response) => {
+          if (response.status === "successful") {
+            toast.success("Payment successful!");
+            navigate(`/success?creatorId=${creatorId}&bookingId=${firstDocId}&tx_ref=${response.tx_ref}`);
+          } else {
+            toast.error("Payment failed or cancelled.");
+          }
+          closePaymentModal();
+        },
+        onClose: () => {
+          toast.info("Payment window closed.");
+        },
       });
 
-      const { url, error } = await response.json();
-      if (error) {
-        toast.error(error);
-      } else if (url) {
-        window.location.href = url;
-      }
     } catch (err) {
       toast.error("Booking failed. Please try again.");
     }
@@ -615,7 +633,7 @@ export default function BookingPage() {
                     <div>
                       <div className="text-sm">Pay via Card / Bank</div>
                       <div className="text-xs text-slate-400">
-                        Fiat (Paystack/Stripe)
+                        Fiat (Flutterwave)
                       </div>
                     </div>
                   </Button>
@@ -631,7 +649,7 @@ export default function BookingPage() {
                     <div>
                       <div className="text-sm">Pay with Crypto</div>
                       <div className="text-xs text-slate-400">
-                        TON / USDT / NOT
+                        TON / SOL / BASE
                       </div>
                     </div>
                   </Button>

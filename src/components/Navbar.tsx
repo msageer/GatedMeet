@@ -23,7 +23,7 @@ export default function Navbar({ user, role }: NavbarProps) {
     <nav className="border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center font-bold text-white text-xl transform group-hover:rotate-12 transition-transform shadow-lg shadow-orange-200">
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center font-bold text-white text-xl transform group-hover:rotate-12 transition-transform shadow-lg shadow-primary/20">
             M
           </div>
           <span className="font-display font-bold text-xl tracking-tight text-slate-900">
@@ -85,7 +85,7 @@ export default function Navbar({ user, role }: NavbarProps) {
           ) : (
             <div className="flex items-center gap-2">
               <Link to="/auth" className={buttonVariants({ variant: "ghost" })}>Sign In</Link>
-              <Link to="/auth" className={buttonVariants({ className: "font-semibold shadow-lg shadow-orange-100 hover:shadow-orange-200" })}>Get Started</Link>
+              <Link to="/auth" className={buttonVariants({ className: "font-semibold shadow-lg shadow-primary/10 hover:shadow-primary/20" })}>Get Started</Link>
             </div>
           )}
         </div>
