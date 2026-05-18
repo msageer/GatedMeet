@@ -26,7 +26,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { db } from "@/lib/firebase";
+import { db, handleFirestoreError, OperationType } from "@/lib/firebase";
 import {
   collection,
   collectionGroup,
@@ -190,6 +190,7 @@ export default function AdminDashboard() {
 
   const handleSaveSettings = async () => {
     setSavingSettings(true);
+    const path = "settings/global";
     try {
       await setDoc(doc(db, "settings", "global"), {
         ...systemSettings,
@@ -197,7 +198,8 @@ export default function AdminDashboard() {
       });
       toast.success("System settings updated!");
     } catch (err: any) {
-      toast.error("Failed to save settings: " + err.message);
+      console.error("Save settings error:", err);
+      handleFirestoreError(err, OperationType.WRITE, path);
     } finally {
       setSavingSettings(false);
     }
