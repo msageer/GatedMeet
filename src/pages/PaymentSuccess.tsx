@@ -15,6 +15,8 @@ import {
   getDocs,
 } from "firebase/firestore";
 
+import { createNotification } from "@/lib/notifications";
+
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -106,6 +108,24 @@ export default function PaymentSuccess() {
                     html: `<p>New booking from ${docData.clientName} (${docData.clientEmail}).</p>${docData.clientDetails ? `<p>Details: ${docData.clientDetails}</p>` : ''}<p>Meeting Link: <a href="${meetingLink}">${meetingLink}</a></p>`,
                   }),
                 });
+
+                // In-app notifications
+                await createNotification({
+                  userId: creatorId,
+                  title: "New Booking Confirmed",
+                  message: `${docData.clientName} booked a session with you.`,
+                  type: "success",
+                  relatedBookingId: firstDocSnap.id
+                });
+
+                await createNotification({
+                  userId: docData.clientEmail,
+                  title: "Booking Confirmed",
+                  message: `Your session with ${creatorData.displayName} is confirmed. Check your email for the link.`,
+                  type: "success",
+                  relatedBookingId: firstDocSnap.id
+                });
+
                 setMeetingLinkToShow(meetingLink);
                 emailSent = true;
               }

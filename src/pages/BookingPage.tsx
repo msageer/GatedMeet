@@ -594,7 +594,7 @@ export default function BookingPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Session</span>
                     <span className="font-bold">
-                      {formData.date} at {formData.time}
+                      {formData.date ? format(formData.date, "PPP") : "No date selected"} at {formData.time}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
