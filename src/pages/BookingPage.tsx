@@ -239,8 +239,8 @@ export default function BookingPage() {
   const flutterConfig = {
     public_key: systemSettings?.flutterwavePublicKey || "",
     tx_ref: Date.now().toString(),
-    amount: totalAmountValue,
-    currency: "USD",
+    amount: totalAmountValue * 1500, // Converting to NGN Assuming 1 USD = ~1500 NGN
+    currency: "NGN",
     payment_options: "card,mobilemoney,ussd",
     customer: {
       email: formData.email,
