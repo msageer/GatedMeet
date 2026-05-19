@@ -197,14 +197,14 @@ export default function Wallet() {
               ${balance.available.toFixed(2)}
             </h3>
             <Dialog open={isPayoutDialogOpen} onOpenChange={setIsPayoutDialogOpen}>
-              <DialogTrigger asChild>
+              <DialogTrigger render={
                 <Button
                   variant="secondary"
                   className="w-full mt-4 bg-white text-primary hover:bg-blue-50 font-bold rounded-xl"
                   disabled={requestingPayout || balance.available <= 0}
-                >
+                />
+              }>
                   Request Payout
-                </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>

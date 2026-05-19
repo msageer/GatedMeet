@@ -66,15 +66,13 @@ export default function NotificationCenter({ userId }: { userId: string }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5 text-slate-600" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-              {unreadCount}
-            </span>
-          )}
-        </Button>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="relative" />}>
+        <Bell className="w-5 h-5 text-slate-600" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+            {unreadCount}
+          </span>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-80 p-0 rounded-2xl overflow-hidden shadow-2xl border-primary/10" align="end">
         <div className="p-4 bg-slate-50 border-b flex justify-between items-center">

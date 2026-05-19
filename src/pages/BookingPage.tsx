@@ -304,8 +304,27 @@ export default function BookingPage() {
       }
 
       if (paymentMethod === "crypto") {
-        toast.info("Redirecting to crypto payment...");
-        navigate(`/crypto-payment/${firstDocId}`);
+        toast.info("Generating crypto invoice...");
+        
+        const response = await fetch("/api/create-nowpayments-invoice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amountUsd: totalAmountValue,
+            orderId: firstDocId,
+            orderDescription: `Session with ${creator.displayName} (${totalSessions} sessions)`,
+            successUrl: `${window.location.origin}/success?creatorId=${creatorId}&bookingId=${firstDocId}&crypto=true`,
+            cancelUrl: `${window.location.origin}/booking/${creatorId}`,
+          }),
+        });
+
+        const { url, error } = await response.json();
+        if (error) {
+          toast.error("Failed to generate crypto invoice.");
+          console.error(error);
+        } else if (url) {
+          window.location.href = url;
+        }
         return;
       }
 

@@ -116,7 +116,7 @@ service cloud.firestore {
       allow create: if isAdmin() || (isSignedIn() && incoming().type == 'payment'); // Systems or verified payments
     }
 
-    // --- Feedback Validation ---
+    // --- Feedbacks ---
     match /feedbacks/{feedbackId} {
       // Anyone can read, but typically just creator and admin. Or public on booking page.
       allow read: if true;
@@ -126,6 +126,14 @@ service cloud.firestore {
                     incoming().timestamp == request.time &&
                     exists(/databases/$(database)/documents/bookings/$(incoming().bookingId));
       allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --- Notifications ---
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == request.auth.token.email);
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == request.auth.token.email) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow create: if true; // Booking flow is unauthenticated
       allow delete: if isAdmin();
     }
   }

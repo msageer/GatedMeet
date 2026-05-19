@@ -155,6 +155,45 @@ async function startServer() {
     }
   });
 
+  app.post("/api/create-nowpayments-invoice", async (req, res) => {
+    try {
+      const { amountUsd, orderId, orderDescription, successUrl, cancelUrl } = req.body;
+
+      if (!amountUsd || !orderId) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || "B0W8AFT-4J14KYJ-PVZWS72-RTWESXF";
+
+      const response = await fetch("https://api.nowpayments.io/v1/invoice", {
+        method: "POST",
+        headers: {
+          "x-api-key": NOWPAYMENTS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          price_amount: amountUsd,
+          price_currency: "usd",
+          order_id: orderId,
+          order_description: orderDescription || "Booking payment",
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.invoice_url) {
+        res.json({ url: data.invoice_url });
+      } else {
+        throw new Error(data.message || "Failed to create NOWPayments invoice");
+      }
+    } catch (err: any) {
+      console.error("NOWPayments Error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Flutterwave Webhook
   app.post("/api/webhooks/flutterwave", async (req, res) => {
       // Disabled. Relying on frontend PaymentSuccess.tsx to hit DB instead
