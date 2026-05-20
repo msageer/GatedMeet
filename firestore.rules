@@ -30,7 +30,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'msagirgroup@gmail.com' ||
+        request.auth.token.get('email', '') == 'msagirgroup@gmail.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
@@ -46,13 +46,11 @@ service cloud.firestore {
 
     // --- Enterprise Grade User Validation ---
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
              data.uid == request.auth.uid &&
-             data.email == request.auth.token.email &&
+             data.email == request.auth.token.get('email', '') &&
              data.role in ['creator', 'admin'] &&
-             data.createdAt == request.time &&
-             (data.get('displayName', '') is string && data.get('displayName', '').size() <= 100) &&
-             (data.get('platformFeeTier', 10) >= 5 && data.get('platformFeeTier', 10) <= 20);
+             (data.get('displayName', '') is string && data.get('displayName', '').size() <= 100);
     }
 
     match /settings/{settingId} {
@@ -68,7 +66,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
       
       allow update: if (isSignedIn() && isOwner(userId) && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'bio', 'pricing', 'availability', 'walletAddress', 'tonAddress', 'solanaAddress', 'baseAddress', 'meetingUrl', 'setupComplete', 'updatedAt']) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'photoBase64', 'bio', 'pricing', 'availability', 'walletAddress', 'tonAddress', 'solanaAddress', 'baseAddress', 'meetingUrl', 'setupComplete', 'updatedAt', 'timezone', 'cancellationPolicy', 'twitterUrl', 'youtubeUrl', 'instagramUrl', 'githubUrl', 'linkedinUrl', 'tiktokUrl', 'theme']) &&
         incoming().role == existing().role
       )) || 
       isAdmin();
@@ -97,7 +95,7 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
-      allow get: if isSignedIn() && (isOwner(existing().creatorId) || existing().clientEmail == request.auth.token.email || isAdmin());
+      allow get: if isSignedIn() && (isOwner(existing().creatorId) || existing().clientEmail == request.auth.token.get('email', '') || isAdmin());
       allow list: if true; // Allowed list for finding unavailable slots and dashboard queries
       
       allow create: if isValidBooking(incoming());
@@ -131,8 +129,8 @@ service cloud.firestore {
 
     // --- Notifications ---
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == request.auth.token.email);
-      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == request.auth.token.email) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == request.auth.token.get('email', ''));
+      allow update: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == request.auth.token.get('email', '')) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
       allow create: if true; // Booking flow is unauthenticated
       allow delete: if isAdmin();
     }

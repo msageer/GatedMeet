@@ -65,7 +65,6 @@ export default function Onboarding() {
         walletAddress: formData.walletAddress,
         meetingUrl: formData.meetingUrl,
         setupComplete: true,
-        platformFeeTier: 10,
         availability: DAYS.reduce(
           (acc, day) => ({
             ...acc,
@@ -76,7 +75,6 @@ export default function Onboarding() {
           }),
           {} as any,
         ),
-        createdAt: new Date().toISOString(),
       });
       toast.success('Profile setup complete!');
       navigate('/dashboard');

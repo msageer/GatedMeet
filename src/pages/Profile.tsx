@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
@@ -159,8 +160,10 @@ export default function Profile() {
          }
       }
 
+      const { platformFeeTier, referralCount, referralBonuses, referredBy, referralCode, role, uid, email, createdAt, ...allowedUpdates } = profile;
+
       await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        ...profile,
+        ...allowedUpdates,
         updatedAt: new Date().toISOString(),
       });
       toast.success("Profile updated successfully!");
@@ -263,14 +266,21 @@ export default function Profile() {
             </div>
             <div className="space-y-2">
               <Label>Timezone</Label>
-              <Input
-                value={profile.timezone}
-                onChange={(e) =>
-                  setProfile({ ...profile, timezone: e.target.value })
-                }
-                placeholder="e.g. America/New_York"
-                className="h-12 border-2 rounded-xl"
-              />
+              <Select 
+                value={profile.timezone} 
+                onValueChange={(val) => setProfile({ ...profile, timezone: val })}
+              >
+                <SelectTrigger className="h-12 border-2 rounded-xl">
+                  <SelectValue placeholder="Select Timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {typeof Intl !== 'undefined' && (Intl as any).supportedValuesOf ? (Intl as any).supportedValuesOf('timeZone').map((tz: string) => (
+                    <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                  )) : (
+                    <SelectItem value={profile.timezone}>{profile.timezone}</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-slate-500">
                 Your current local timezone is used as a default.
               </p>
@@ -538,13 +548,9 @@ export default function Profile() {
                   max="20"
                   step="1"
                   value={profile.platformFeeTier || 10}
-                  onChange={(e) =>
-                    setProfile({
-                      ...profile,
-                      platformFeeTier: Number(e.target.value),
-                    })
-                  }
-                  className="w-full accent-indigo-600"
+                  readOnly
+                  disabled
+                  className="w-full accent-indigo-600 opacity-50 cursor-not-allowed"
                 />
                 <span className="font-bold text-lg w-12 text-right">{profile.platformFeeTier || 10}%</span>
               </div>
