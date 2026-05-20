@@ -7,9 +7,8 @@ const app = initializeApp(firebaseConfig);
 
 // Configure Firestore with simple memory cache and long polling to avoid "client offline" errors in iframe
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  localCache: memoryLocalCache(),
-}, firebaseConfig.firestoreDatabaseId);
+  experimentalAutoDetectLongPolling: true
+});
 
 export const auth = getAuth(app);
 

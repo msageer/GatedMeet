@@ -2,7 +2,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { Toaster } from 'sonner';
 import { Button } from './components/ui/button';
 import { toast } from 'sonner';
@@ -62,31 +62,43 @@ export default function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeUserDoc: () => void;
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
       if (user) {
-        try {
-          if (user.email === 'msagirgroup@gmail.com') {
-            setRole('admin');
-          } else {
-            const userDoc = await getDoc(doc(db, 'users', user.uid));
-            if (userDoc.exists()) {
-              console.log('App.tsx: Found user doc:', userDoc.data());
-              setRole(userDoc.data().role);
-            } else {
-              console.log('App.tsx: User doc does not exist for uid:', user.uid);
-              setRole(null);
+        if (user.email === 'msagirgroup@gmail.com') {
+          setRole('admin');
+          setLoading(false);
+        } else {
+          unsubscribeUserDoc = onSnapshot(
+            doc(db, 'users', user.uid),
+            (userDoc) => {
+              if (userDoc.exists()) {
+                console.log('App.tsx: Found user doc:', userDoc.data());
+                setRole(userDoc.data().role);
+              } else {
+                console.log('App.tsx: User doc does not exist for uid:', user.uid);
+                setRole(null);
+              }
+              setLoading(false);
+            },
+            (error) => {
+              console.error('App.tsx: error fetching userdoc (handled by snapshot)', error);
+              setLoading(false);
             }
-          }
-        } catch (e) {
-          console.error('App.tsx: error fetching userdoc', e);
+          );
         }
       } else {
         setRole(null);
+        setLoading(false);
+        if (unsubscribeUserDoc) unsubscribeUserDoc();
       }
-      setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeUserDoc) unsubscribeUserDoc();
+    };
   }, []);
 
   if (loading) return <div className="h-screen w-screen flex items-center justify-center font-mono animate-pulse">GatedMeet...</div>;
