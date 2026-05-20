@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, setCachedAccessToken } from "@/lib/firebase";
 import {
   signInWithPopup,
   GoogleAuthProvider,
@@ -73,7 +73,16 @@ export default function Auth() {
   const handleGoogleAuth = async () => {
     try {
       const provider = new GoogleAuthProvider();
+      provider.addScope("https://www.googleapis.com/auth/calendar");
+      provider.addScope("https://www.googleapis.com/auth/meetings.space.created");
+      provider.addScope("https://www.googleapis.com/auth/tasks");
+      
       const result = await signInWithPopup(auth, provider);
+      
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        setCachedAccessToken(credential.accessToken);
+      }
 
       const userRef = doc(db, "users", result.user.uid);
       const userSnap = await getDoc(userRef);

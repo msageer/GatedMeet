@@ -1,23 +1,39 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator, indexedDBLocalPersistence, setPersistence } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator, indexedDBLocalPersistence, inMemoryPersistence, setPersistence } from 'firebase/auth';
+import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// Configure Firestore with production-ready persistence
+// Configure Firestore with simple memory cache and long polling to avoid "client offline" errors in iframe
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true,
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-  }),
+  localCache: memoryLocalCache(),
 }, firebaseConfig.firestoreDatabaseId);
 
 export const auth = getAuth(app);
 
+// In-memory cache for Google Workspace access token
+let cachedAccessToken: string | null = null;
+
+export const setCachedAccessToken = (token: string | null) => {
+  cachedAccessToken = token;
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  return cachedAccessToken;
+};
+
+auth.onAuthStateChanged((user) => {
+  if (!user) {
+    cachedAccessToken = null;
+  }
+});
+
 // Attempt to set persistence to handle network drops in the preview iframe
 setPersistence(auth, indexedDBLocalPersistence).catch((err) => {
-  console.warn("Auth persistence failed:", err);
+  console.warn("Auth persistence failed (falling back to inMemory):", err);
+  setPersistence(auth, inMemoryPersistence).catch(() => {});
 });
 
 export enum OperationType {

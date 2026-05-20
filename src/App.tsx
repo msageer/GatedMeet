@@ -66,15 +66,17 @@ export default function App() {
       setUser(user);
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (user.email === 'msagirgroup@gmail.com') {
             setRole('admin');
-          } else if (userDoc.exists()) {
-            console.log('App.tsx: Found user doc:', userDoc.data());
-            setRole(userDoc.data().role);
           } else {
-            console.log('App.tsx: User doc does not exist for uid:', user.uid);
-            setRole(null);
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              console.log('App.tsx: Found user doc:', userDoc.data());
+              setRole(userDoc.data().role);
+            } else {
+              console.log('App.tsx: User doc does not exist for uid:', user.uid);
+              setRole(null);
+            }
           }
         } catch (e) {
           console.error('App.tsx: error fetching userdoc', e);

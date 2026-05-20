@@ -17,7 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, getAccessToken, setCachedAccessToken } from "@/lib/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import {
   collection,
   query,
@@ -77,8 +78,55 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
   );
+  const [googleEvents, setGoogleEvents] = useState<any[]>([]);
+  const [googleTasks, setGoogleTasks] = useState<any[]>([]);
+  const [isWorkspaceConnected, setIsWorkspaceConnected] = useState(false);
+
+  const fetchWorkspaceData = async () => {
+    const token = await getAccessToken();
+    if (!token) return;
+    setIsWorkspaceConnected(true);
+
+    try {
+      // Fetch upcoming events from Google Calendar
+      const timeMin = new Date().toISOString();
+      const eventsRes = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&maxResults=5&singleEvents=true&orderBy=startTime`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (eventsRes.ok) {
+        const eventsData = await eventsRes.json();
+        setGoogleEvents(eventsData.items || []);
+      }
+
+      // Fetch pending tasks from Google Tasks
+      const tasklistsRes = await fetch("https://tasks.googleapis.com/tasks/v1/users/@me/lists", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (tasklistsRes.ok) {
+        const tasklists = await tasklistsRes.json();
+        const defaultList = tasklists.items?.[0]?.id;
+        if (defaultList) {
+          const tasksRes = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${defaultList}/tasks?showCompleted=false&maxResults=5`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (tasksRes.ok) {
+            const tasksData = await tasksRes.json();
+            setGoogleTasks(tasksData.items || []);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch workspace data", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkspaceData();
+  }, [auth.currentUser]);
 
   const processAnalytics = (data: Booking[], reviews: any[]) => {
+
+
     // Group by day for the last 7 days
     const last7Days = Array.from({length: 7}).map((_, i) => {
       const d = subDays(new Date(), Math.abs(i - 6));
@@ -288,6 +336,96 @@ export default function Dashboard() {
     }
   };
 
+  const handleSyncWorkspace = async (booking: Booking) => {
+    let token = await getAccessToken();
+    if (!token) {
+      if (!window.confirm("You need to authenticate with Google to connect your Workspace. Proceed?")) return;
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.addScope("https://www.googleapis.com/auth/calendar");
+        provider.addScope("https://www.googleapis.com/auth/meetings.space.created");
+        provider.addScope("https://www.googleapis.com/auth/tasks");
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          setCachedAccessToken(credential.accessToken);
+          token = credential.accessToken;
+        } else {
+          throw new Error("No access token found");
+        }
+      } catch (err: any) {
+        toast.error("Google authentication failed.");
+        return;
+      }
+    }
+
+    try {
+      toast.loading("Syncing with Google Workspace...", { id: "workspace-sync" });
+
+      // 1. Create Calendar Event with Google Meet
+      const eventResponse = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          summary: `Session with ${booking.clientName}`,
+          description: `Client Details: ${booking.clientDetails}`,
+          start: { dateTime: new Date(booking.startTime).toISOString() },
+          end: { dateTime: new Date(booking.endTime).toISOString() },
+          attendees: [{ email: booking.clientEmail }],
+          conferenceData: {
+            createRequest: {
+              requestId: `booking-${booking.id}-${Date.now()}`,
+              conferenceSolutionKey: { type: "hangoutsMeet" }
+            }
+          }
+        })
+      });
+
+      if (!eventResponse.ok) throw new Error("Failed to create calendar event");
+      const eventData = await eventResponse.json();
+      const meetLink = eventData.hangoutLink;
+
+      // 2. Create Google Task
+      const tasklistsRes = await fetch("https://tasks.googleapis.com/tasks/v1/users/@me/lists", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (tasklistsRes.ok) {
+        const tasklists = await tasklistsRes.json();
+        const defaultList = tasklists.items?.[0]?.id;
+        if (defaultList) {
+          await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${defaultList}/tasks`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              title: `Prepare for session with ${booking.clientName}`,
+              notes: `Booking ID: ${booking.id}\nClient Details: ${booking.clientDetails}`,
+              due: new Date(booking.startTime).toISOString()
+            })
+          });
+        }
+      }
+
+      // 3. Update Firestore with meeting link
+      if (meetLink) {
+        await updateDoc(doc(db, "bookings", booking.id!), { meetingLink: meetLink });
+        toast.success("Added to Calendar & Meet link generated", { id: "workspace-sync" });
+        fetchBookings();
+      } else {
+        toast.success("Added to Calendar, but no Meet link created", { id: "workspace-sync" });
+      }
+
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to sync workspace: " + err.message, { id: "workspace-sync" });
+    }
+  };
+
   const getDayBookings = (date: Date) => {
     return bookings.filter(
       (b) =>
@@ -365,6 +503,53 @@ export default function Dashboard() {
           </Link>
         </div>
       </header>
+
+      {/* Google Workspace Section */}
+      {isWorkspaceConnected && (googleEvents.length > 0 || googleTasks.length > 0) && (
+        <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden bg-gradient-to-br from-white to-blue-50/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <CalendarIcon className="w-6 h-6 text-blue-500" />
+              Workspace Agenda
+            </CardTitle>
+            <CardDescription>Your upcoming Google Calendar events and Google Tasks.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-700 flex items-center gap-2"><Clock className="w-4 h-4"/> Upcoming Events</h4>
+              <div className="space-y-3">
+                {googleEvents.length > 0 ? googleEvents.map(event => (
+                  <div key={event.id} className="p-3 bg-white rounded-2xl border-2 shadow-sm">
+                    <p className="font-semibold text-slate-800">{event.summary || "Untitled Event"}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {event.start?.dateTime ? new Date(event.start.dateTime).toLocaleString() : 'All day'}
+                    </p>
+                    {event.hangoutLink && (
+                      <a href={event.hangoutLink} target="_blank" className="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3" /> Meet Link
+                      </a>
+                    )}
+                  </div>
+                )) : <p className="text-sm text-slate-500">No upcoming events found.</p>}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-700 flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Pending Tasks</h4>
+              <div className="space-y-3">
+                {googleTasks.length > 0 ? googleTasks.map(task => (
+                  <div key={task.id} className="p-3 bg-white rounded-2xl border-2 shadow-sm flex items-start gap-3">
+                    <div className="w-4 h-4 border-2 rounded-full mt-1 border-slate-300"></div>
+                    <div>
+                      <p className="font-semibold text-slate-800">{task.title}</p>
+                      {task.due && <p className="text-xs text-slate-500 mt-1">Due: {new Date(task.due).toLocaleDateString()}</p>}
+                    </div>
+                  </div>
+                )) : <p className="text-sm text-slate-500">No pending tasks found.</p>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -676,18 +861,30 @@ export default function Dashboard() {
                           {booking.status !== "cancelled" &&
                           booking.status !== "pending" ? (
                             <div className="flex items-center justify-end gap-2">
-                              <a
-                                href={booking.meetingLink || "#"}
-                                target="_blank"
-                                className={buttonVariants({
-                                  variant: "ghost",
-                                  size: "sm",
-                                  className: "text-primary font-bold",
-                                })}
-                              >
-                                Join Link
-                                <ExternalLink className="w-3 h-3 ml-1" />
-                              </a>
+                              {!booking.meetingLink && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleSyncWorkspace(booking)}
+                                  className="text-blue-600 bg-blue-50 hover:bg-blue-100 font-bold"
+                                >
+                                  Sync Meet & Task
+                                </Button>
+                              )}
+                              {booking.meetingLink && (
+                                <a
+                                  href={booking.meetingLink}
+                                  target="_blank"
+                                  className={buttonVariants({
+                                    variant: "ghost",
+                                    size: "sm",
+                                    className: "text-primary font-bold",
+                                  })}
+                                >
+                                  Join Link
+                                  <ExternalLink className="w-3 h-3 ml-1" />
+                                </a>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { CheckCircle2, Loader2, AlertCircle, Globe } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, Globe, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { db } from "@/lib/firebase";
@@ -148,6 +148,17 @@ export default function PaymentSuccess() {
     verifyAndConfirm();
   }, [tx_ref, transaction_id, mockPayment, bookingId, creatorId, paymentStatus]);
 
+// Add this helper function at the top of the component or before return
+  const getGoogleCalendarURL = () => {
+    if (!bookingDetails) return "";
+    const title = `Session with Creator`; // Or specific if we have creator name
+    const st = new Date(bookingDetails.startTime).toISOString().replace(/-|:|\.\d\d\d/g,"");
+    const et = new Date(bookingDetails.endTime).toISOString().replace(/-|:|\.\d\d\d/g,"");
+    const details = bookingDetails.clientDetails || "Meeting scheduled via GatedMeet.";
+    const loc = meetingLinkToShow || "";
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${st}/${et}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(loc)}`;
+  };
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">
       <motion.div
@@ -215,6 +226,12 @@ export default function PaymentSuccess() {
                     </a>
                   </div>
                 )}
+                <div className="pt-3">
+                  <a href={getGoogleCalendarURL()} target="_blank" rel="noopener noreferrer" className="w-full inline-flex justify-center items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold shadow-sm hover:bg-slate-50">
+                    <CalendarIcon className="w-4 h-4 text-slate-500" />
+                    Add to Google Calendar
+                  </a>
+                </div>
               </div>
             )}
             <div className="pt-6 border-t w-full flex flex-col gap-3">
