@@ -44,7 +44,8 @@ import {
   BarChart as BarChartIcon,
   TrendingUp,
   Star,
-  Clock
+  Clock,
+  RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { Booking } from "../types";
@@ -336,6 +337,105 @@ export default function Dashboard() {
     }
   };
 
+  const handleBulkSyncWorkspace = async () => {
+    let token = await getAccessToken();
+    if (!token) {
+      if (!window.confirm("You need to authenticate with Google to connect your Workspace. Proceed?")) return;
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.addScope("https://www.googleapis.com/auth/calendar");
+        provider.addScope("https://www.googleapis.com/auth/meetings.space.created");
+        provider.addScope("https://www.googleapis.com/auth/tasks");
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          setCachedAccessToken(credential.accessToken);
+          token = credential.accessToken;
+        } else {
+          throw new Error("No access token found");
+        }
+      } catch (err: any) {
+        toast.error("Google authentication failed.");
+        return;
+      }
+    }
+
+    const unsyncedBookings = bookings.filter(b => (b.status === "confirmed" || b.status === "paid") && !b.meetingLink);
+
+    if (unsyncedBookings.length === 0) {
+      toast.info("All confirmed bookings are already synced.");
+      return;
+    }
+
+    try {
+      toast.loading(`Syncing ${unsyncedBookings.length} bookings with Workspace...`, { id: "workspace-bulk-sync" });
+
+      for (const booking of unsyncedBookings) {
+        // 1. Create Calendar Event with Google Meet & email notification
+        const eventResponse = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            summary: `Session with ${booking.clientName}`,
+            description: `Client Details: ${booking.clientDetails}\nBooking ID: ${booking.id}`,
+            start: { dateTime: new Date(booking.startTime).toISOString() },
+            end: { dateTime: new Date(booking.endTime).toISOString() },
+            attendees: [{ email: booking.clientEmail }],
+            conferenceData: {
+              createRequest: {
+                requestId: `booking-${booking.id}-${Date.now()}`,
+                conferenceSolutionKey: { type: "hangoutsMeet" }
+              }
+            }
+          })
+        });
+
+        if (eventResponse.ok) {
+          const eventData = await eventResponse.json();
+          const meetLink = eventData.hangoutLink;
+
+          // 2. Create Google Task
+          const tasklistsRes = await fetch("https://tasks.googleapis.com/tasks/v1/users/@me/lists", {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          if (tasklistsRes.ok) {
+            const tasklists = await tasklistsRes.json();
+            const defaultList = tasklists.items?.[0]?.id;
+            if (defaultList) {
+              await fetch(`https://tasks.googleapis.com/tasks/v1/lists/${defaultList}/tasks`, {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${token}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  title: `Prepare for session with ${booking.clientName}`,
+                  notes: `Booking ID: ${booking.id}\nClient Details: ${booking.clientDetails}`,
+                  due: new Date(booking.startTime).toISOString()
+                })
+              });
+            }
+          }
+
+          // 3. Update Firestore with meeting link
+          if (meetLink) {
+            await updateDoc(doc(db, "bookings", booking.id!), { meetingLink: meetLink });
+          }
+        }
+      }
+
+      toast.success("Workspace synced successfully and clients notified!", { id: "workspace-bulk-sync" });
+      fetchBookings();
+      fetchWorkspaceData();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to sync workspace: " + err.message, { id: "workspace-bulk-sync" });
+    }
+  };
+
   const handleSyncWorkspace = async (booking: Booking) => {
     let token = await getAccessToken();
     if (!token) {
@@ -487,6 +587,14 @@ export default function Dashboard() {
         <div className="flex gap-2">
           <Button
             variant="outline"
+            onClick={handleBulkSyncWorkspace}
+            className="rounded-xl border-2 font-bold flex gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Sync Workspace
+          </Button>
+          <Button
+            variant="outline"
             onClick={shareBookingLink}
             className="rounded-xl border-2 font-bold flex gap-2"
           >
@@ -507,12 +615,18 @@ export default function Dashboard() {
       {/* Google Workspace Section */}
       {isWorkspaceConnected && (googleEvents.length > 0 || googleTasks.length > 0) && (
         <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden bg-gradient-to-br from-white to-blue-50/50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <CalendarIcon className="w-6 h-6 text-blue-500" />
-              Workspace Agenda
-            </CardTitle>
-            <CardDescription>Your upcoming Google Calendar events and Google Tasks.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-2xl">
+                <CalendarIcon className="w-6 h-6 text-blue-500" />
+                Workspace Agenda
+              </CardTitle>
+              <CardDescription>Your upcoming Google Calendar events and Google Tasks.</CardDescription>
+            </div>
+            <Button onClick={handleBulkSyncWorkspace} variant="outline" size="sm" className="hidden sm:flex">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Sync Bookings
+            </Button>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -162,24 +162,27 @@ export default function Profile() {
     if (!auth.currentUser) return;
     setSaving(true);
     try {
-      if (profile.photoBase64) {
-         const { updateProfile } = await import("firebase/auth");
-         try {
-           await updateProfile(auth.currentUser, {
-             photoURL: profile.photoBase64,
-             displayName: profile.displayName || auth.currentUser.displayName,
-           });
-         } catch (e) {
-           console.warn("Could not update auth profile photo (URL too long?)", e);
-         }
+      const { updateProfile } = await import("firebase/auth");
+      try {
+        await updateProfile(auth.currentUser, {
+          photoURL: profile.photoBase64 || auth.currentUser.photoURL,
+          displayName: profile.displayName || auth.currentUser.displayName,
+        });
+      } catch (e) {
+        console.warn("Could not update auth profile (URL too long?)", e);
       }
 
       const { platformFeeTier, referralCount, referralBonuses, referredBy, referralCode, role, uid, email, createdAt, ...allowedUpdates } = profile;
 
-      await updateDoc(doc(db, "users", auth.currentUser.uid), {
-        ...allowedUpdates,
+      // Remove undefined values since Firestore rejects them
+      const cleanUpdates = Object.fromEntries(
+        Object.entries(allowedUpdates).filter(([_, v]) => v !== undefined)
+      );
+
+      await setDoc(doc(db, "users", auth.currentUser.uid), {
+        ...cleanUpdates,
         updatedAt: new Date().toISOString(),
-      });
+      }, { merge: true });
       toast.success("Profile updated successfully!");
     } catch (err) {
       toast.error("Failed to update profile");
