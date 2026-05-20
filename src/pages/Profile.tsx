@@ -69,85 +69,83 @@ export default function Profile() {
       try {
         const docRef = doc(db, "users", auth.currentUser.uid);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
+        const data = docSnap.exists() ? docSnap.data() : {};
 
-          // Generate referral code if missing
-          let currentReferralCode = data.referralCode;
-          if (!currentReferralCode) {
-            currentReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-            try {
-              await updateDoc(docRef, { referralCode: currentReferralCode });
-            } catch (updateErr) {
-              console.error("Failed to generate and save new referral code", updateErr);
-            }
+        // Generate referral code if missing
+        let currentReferralCode = data.referralCode;
+        if (!currentReferralCode) {
+          currentReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          try {
+             await setDoc(docRef, { referralCode: currentReferralCode }, { merge: true });
+          } catch (updateErr) {
+            console.error("Failed to generate and save new referral code", updateErr);
           }
-
-          // Migrate old availability shape if needed
-          let availability = data.availability;
-          if (
-            availability &&
-            Object.values(availability).some((a: any) => a.start && !a.slots)
-          ) {
-            // Old format had { enabled, start, end }
-            availability = Object.keys(availability).reduce((acc, key) => {
-              const old = availability[key];
-              return {
-                ...acc,
-                [key]: {
-                  enabled: old.enabled,
-                  slots: old.enabled
-                    ? [{ start: old.start || "09:00", end: old.end || "17:00" }]
-                    : [],
-                },
-              };
-            }, {});
-          }
-
-          setProfile({
-            displayName: data.displayName || "",
-            bio: data.bio || "",
-            photoBase64: data.photoBase64 || "",
-            pricing: data.pricing || {
-              price: 50,
-              currency: "USD",
-              duration: 60,
-            },
-            platformFeeTier: data.platformFeeTier || 10,
-            walletAddress: data.walletAddress || "",
-            tonAddress: data.tonAddress || "",
-            solanaAddress: data.solanaAddress || "",
-            baseAddress: data.baseAddress || "",
-            meetingUrl: data.meetingUrl || "",
-            referralCode: currentReferralCode,
-            referralCount: data.referralCount || 0,
-            referralBonuses: data.referralBonuses || 0,
-            twitterUrl: data.twitterUrl || "",
-            youtubeUrl: data.youtubeUrl || "",
-            instagramUrl: data.instagramUrl || "",
-            githubUrl: data.githubUrl || "",
-            linkedinUrl: data.linkedinUrl || "",
-            skills: data.skills || "",
-            proofOfWork: data.proofOfWork || "",
-            timezone:
-              data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-            cancellationPolicy:
-              data.cancellationPolicy ||
-              "Cancellations must be made at least 24 hours in advance for a full refund.",
-            availability:
-              availability ||
-              DAYS.reduce(
-                (acc, day) => ({
-                  ...acc,
-                  [day]: {
-                    enabled: day !== "saturday" && day !== "sunday",
-                    slots: [{ start: "09:00", end: "17:00" }],
-                  },
-                }),
-                {} as any,
-              ),
-          });
         }
+
+        // Migrate old availability shape if needed
+        let availability = data.availability;
+        if (
+          availability &&
+          Object.values(availability).some((a: any) => a.start && !a.slots)
+        ) {
+          // Old format had { enabled, start, end }
+          availability = Object.keys(availability).reduce((acc, key) => {
+            const old = availability[key];
+            return {
+              ...acc,
+              [key]: {
+                enabled: old.enabled,
+                slots: old.enabled
+                  ? [{ start: old.start || "09:00", end: old.end || "17:00" }]
+                  : [],
+              },
+            };
+          }, {});
+        }
+
+        setProfile({
+          displayName: data.displayName || "",
+          bio: data.bio || "",
+          photoBase64: data.photoBase64 || "",
+          pricing: data.pricing || {
+            price: 50,
+            currency: "USD",
+            duration: 60,
+          },
+          platformFeeTier: data.platformFeeTier || 10,
+          walletAddress: data.walletAddress || "",
+          tonAddress: data.tonAddress || "",
+          solanaAddress: data.solanaAddress || "",
+          baseAddress: data.baseAddress || "",
+          meetingUrl: data.meetingUrl || "",
+          referralCode: currentReferralCode,
+          referralCount: data.referralCount || 0,
+          referralBonuses: data.referralBonuses || 0,
+          twitterUrl: data.twitterUrl || "",
+          youtubeUrl: data.youtubeUrl || "",
+          instagramUrl: data.instagramUrl || "",
+          githubUrl: data.githubUrl || "",
+          linkedinUrl: data.linkedinUrl || "",
+          skills: data.skills || "",
+          proofOfWork: data.proofOfWork || "",
+          timezone:
+            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          cancellationPolicy:
+            data.cancellationPolicy ||
+            "Cancellations must be made at least 24 hours in advance for a full refund.",
+          availability:
+            availability ||
+            DAYS.reduce(
+              (acc, day) => ({
+                ...acc,
+                [day]: {
+                  enabled: day !== "saturday" && day !== "sunday",
+                  slots: [{ start: "09:00", end: "17:00" }],
+                },
+              }),
+              {} as any,
+            ),
+        });
       } catch (err) {
         console.error(err);
       } finally {
