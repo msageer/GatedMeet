@@ -233,8 +233,8 @@ export default function BookingPage() {
 
   const totalSessionsCount = formData.recurring !== "none" ? formData.sessionsCount : 1;
   const totalAmountValue = formData.billingMode === "recurring" 
-      ? (creator?.pricing?.price || 0)
-      : (creator?.pricing?.price || 0) * totalSessionsCount;
+      ? Number(creator?.pricing?.price || 0)
+      : Number(creator?.pricing?.price || 0) * totalSessionsCount;
 
   const flutterConfig = {
     public_key: systemSettings?.flutterwavePublicKey || "",
@@ -290,7 +290,7 @@ export default function BookingPage() {
           startTime: sessionStart.toISOString(),
           endTime: sessionEnd.toISOString(),
           status: "pending",
-          amount: creator.pricing.price,
+          amount: Number(creator?.pricing?.price || 0),
           paymentType: paymentMethod,
           createdAt: serverTimestamp(),
           isRecurring: isRecurring,
@@ -349,6 +349,7 @@ export default function BookingPage() {
       });
 
     } catch (err) {
+      console.error("Booking error:", err);
       toast.error("Booking failed. Please try again.");
     }
   };
@@ -398,6 +399,50 @@ export default function BookingPage() {
           <p className="text-slate-600 leading-relaxed text-lg italic">
             "{creator.bio || "Ready to help you scale your tech skills."}"
           </p>
+
+          {/* Socials & Skills block */}
+          {(creator.skills || creator.proofOfWork || creator.twitterUrl || creator.youtubeUrl || creator.instagramUrl || creator.githubUrl || creator.linkedinUrl) && (
+            <div className="flex flex-col gap-3 mt-4">
+              {creator.skills && (
+                <div className="flex flex-wrap gap-2">
+                  {creator.skills.split(',').map((skill: string, i: number) => (
+                    <Badge key={i} variant="outline" className="bg-slate-50 text-slate-700">
+                      {skill.trim()}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex flex-wrap gap-3 mt-1">
+                {creator.proofOfWork && (
+                  <a href={creator.proofOfWork} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                    Portfolio / Proof of Work
+                  </a>
+                )}
+                {creator.twitterUrl && (
+                  <a href={creator.twitterUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-blue-500 flex items-center gap-1">
+                    X (Twitter)
+                  </a>
+                )}
+                {creator.linkedinUrl && (
+                  <a href={creator.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-blue-700 flex items-center gap-1">
+                    LinkedIn
+                  </a>
+                )}
+                {creator.githubUrl && (
+                  <a href={creator.githubUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-black flex items-center gap-1">
+                    GitHub
+                  </a>
+                )}
+                {creator.youtubeUrl && (
+                  <a href={creator.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-red-500 flex items-center gap-1">
+                    YouTube
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-6 rounded-3xl bg-white border-2 border-slate-100 shadow-sm space-y-4">

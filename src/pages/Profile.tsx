@@ -41,6 +41,13 @@ export default function Profile() {
     referralCode: "",
     referralCount: 0,
     referralBonuses: 0,
+    twitterUrl: "",
+    youtubeUrl: "",
+    instagramUrl: "",
+    githubUrl: "",
+    linkedinUrl: "",
+    skills: "",
+    proofOfWork: "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     cancellationPolicy:
       "Cancellations must be made at least 24 hours in advance for a full refund.",
@@ -115,6 +122,13 @@ export default function Profile() {
             referralCode: currentReferralCode,
             referralCount: data.referralCount || 0,
             referralBonuses: data.referralBonuses || 0,
+            twitterUrl: data.twitterUrl || "",
+            youtubeUrl: data.youtubeUrl || "",
+            instagramUrl: data.instagramUrl || "",
+            githubUrl: data.githubUrl || "",
+            linkedinUrl: data.linkedinUrl || "",
+            skills: data.skills || "",
+            proofOfWork: data.proofOfWork || "",
             timezone:
               data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
             cancellationPolicy:
@@ -309,6 +323,87 @@ export default function Profile() {
               <p className="text-xs text-slate-500">
                 Your static meeting link. If left blank, a random Google Meet link is generated for each booking.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2rem] border-2">
+          <CardHeader>
+            <CardTitle>Proof of Work & Skills</CardTitle>
+            <CardDescription>
+              Showcase your expertise, work samples, and connect your social platforms.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Core Skills (e.g., React, Node.js, Project Management)</Label>
+              <Input
+                value={profile.skills || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, skills: e.target.value })
+                }
+                placeholder="List your top skills separated by commas..."
+                className="h-12 border-2 rounded-xl"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Proof of Work / Portfolio Link</Label>
+              <Input
+                value={profile.proofOfWork || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, proofOfWork: e.target.value })
+                }
+                placeholder="https://your-portfolio.com or link to a key project/repo"
+                className="h-12 border-2 rounded-xl"
+              />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4 pt-2">
+              <div className="space-y-2">
+                <Label>X (Twitter) URL</Label>
+                <Input
+                  value={profile.twitterUrl || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, twitterUrl: e.target.value })
+                  }
+                  placeholder="https://x.com/yourhandle"
+                  className="h-12 border-2 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>LinkedIn URL</Label>
+                <Input
+                  value={profile.linkedinUrl || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, linkedinUrl: e.target.value })
+                  }
+                  placeholder="https://linkedin.com/in/yourname"
+                  className="h-12 border-2 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>GitHub URL</Label>
+                <Input
+                  value={profile.githubUrl || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, githubUrl: e.target.value })
+                  }
+                  placeholder="https://github.com/yourhandle"
+                  className="h-12 border-2 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>YouTube URL</Label>
+                <Input
+                  value={profile.youtubeUrl || ""}
+                  onChange={(e) =>
+                    setProfile({ ...profile, youtubeUrl: e.target.value })
+                  }
+                  placeholder="https://youtube.com/@yourchannel"
+                  className="h-12 border-2 rounded-xl"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
