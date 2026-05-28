@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import React, { useState, useEffect } from "react";
 import {
   Card,
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { auth, db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,8 +69,21 @@ export default function Profile() {
       if (!auth.currentUser) return;
       try {
         const docRef = doc(db, "users", auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        const data = docSnap.exists() ? docSnap.data() : {};
+        
+        let docSnap;
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            docSnap = await getDoc(docRef);
+            break;
+          } catch (e: any) {
+             retries--;
+             if (retries === 0) throw e;
+             await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+        
+        const data = docSnap?.exists() ? docSnap.data() : {};
 
         // Generate referral code if missing
         let currentReferralCode = data.referralCode;

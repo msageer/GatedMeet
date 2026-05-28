@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { useState } from "react";
 import { 
   createUserWithEmailAndPassword, 
@@ -7,8 +8,7 @@ import {
 import { 
   doc, 
   setDoc, 
-  serverTimestamp, 
-  getDoc 
+  serverTimestamp 
 } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { Button } from "@/components/ui/button";

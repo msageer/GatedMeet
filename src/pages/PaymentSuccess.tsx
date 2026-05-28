@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
@@ -7,13 +8,11 @@ import { toast } from "sonner";
 import { db } from "@/lib/firebase";
 import {
   doc,
-  getDoc,
   updateDoc,
   collection,
   query,
   where,
-  getDocs,
-} from "firebase/firestore";
+  } from "firebase/firestore";
 
 import { createNotification } from "@/lib/notifications";
 

@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
@@ -23,14 +24,12 @@ import {
   collection,
   query,
   where,
-  getDocs,
   orderBy,
   limit,
   doc,
   addDoc,
   serverTimestamp,
   updateDoc,
-  getDoc,
 } from "firebase/firestore";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -231,8 +230,21 @@ export default function Dashboard() {
     const fetchInitialData = async () => {
       if (!auth.currentUser) return;
       try {
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-        if (userDoc.exists() && userDoc.data().setupComplete === false) {
+        const docRef = doc(db, "users", auth.currentUser.uid);
+        let userDoc;
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            userDoc = await getDoc(docRef);
+            break;
+          } catch(e: any) {
+             retries--;
+             if (retries === 0) throw e;
+             await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+        
+        if (userDoc?.exists() && userDoc.data().setupComplete === false) {
           navigate("/onboarding");
           return;
         }
@@ -971,19 +983,39 @@ export default function Dashboard() {
                         <TableCell className="capitalize">
                           {booking.paymentType}
                         </TableCell>
-                         <TableCell className="text-right">
+                        <TableCell className="text-right">
                           {booking.status !== "cancelled" &&
                           booking.status !== "pending" ? (
                             <div className="flex items-center justify-end gap-2">
                               {!booking.meetingLink && (
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => handleSyncWorkspace(booking)}
-                                  className="text-blue-600 bg-blue-50 hover:bg-blue-100 font-bold"
-                                >
-                                  Sync Meet & Task
-                                </Button>
+                                <>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => handleSyncWorkspace(booking)}
+                                    className="text-blue-600 bg-blue-50 hover:bg-blue-100 font-bold"
+                                  >
+                                    Google Meet
+                                  </Button>
+                                  <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={async () => {
+                                      try {
+                                        await updateDoc(doc(db, "bookings", booking.id!), { 
+                                          meetingLink: `${window.location.origin}/meet/${booking.id}` 
+                                        });
+                                        toast.success("Built-in meeting room created!");
+                                        fetchBookings();
+                                      } catch (err) {
+                                        toast.error("Error creating meeting room: " + err);
+                                      }
+                                    }}
+                                    className="text-indigo-600 bg-indigo-50 hover:bg-indigo-100 font-bold"
+                                  >
+                                    Built-in Room
+                                  </Button>
+                                </>
                               )}
                               {booking.meetingLink && (
                                 <a

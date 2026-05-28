@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -22,10 +23,10 @@ import {
   collection,
   query,
   where,
-  getDocs,
   orderBy,
   addDoc,
   serverTimestamp,
+  doc,
 } from "firebase/firestore";
 import {
   Wallet as WalletIcon,
@@ -97,9 +98,7 @@ export default function Wallet() {
     if (!auth.currentUser) return;
     try {
       // Get user profile first to get referral bonuses
-      const userSnap = await import("firebase/firestore").then((m) =>
-        m.getDoc(m.doc(db, "users", auth.currentUser!.uid)),
-      );
+      const userSnap = await getDoc(doc(db, "users", auth.currentUser!.uid));
       const userData = userSnap.exists()
         ? userSnap.data()
         : { referralBonuses: 0 };

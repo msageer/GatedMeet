@@ -1,10 +1,10 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { db } from "@/lib/firebase";
 import {
   doc,
-  getDoc,
   addDoc,
   collection,
   serverTimestamp,
@@ -103,7 +103,7 @@ export default function BookingPage() {
         const endOfDay = new Date(formData.date);
         endOfDay.setHours(23, 59, 59, 999);
 
-        const { query, where, getDocs } = await import("firebase/firestore");
+        const { query, where } = await import("firebase/firestore");
         const q = query(
           collection(db, "bookings"),
           where("creatorId", "==", creatorId),

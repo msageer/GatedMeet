@@ -43,8 +43,11 @@ export default function NotificationCenter({ userId }: { userId: string }) {
         ...d.data(),
       })) as AppNotification[];
       setNotifications(data);
-    }, (error) => {
-      console.error("Notifications listener error:", error);
+    }, (error: any) => {
+      const msg = error.message?.toLowerCase() || '';
+      if (!msg.includes('offline') && !msg.includes('network')) {
+        console.error("Notifications listener error:", error);
+      }
     });
 
     return () => unsubscribe();

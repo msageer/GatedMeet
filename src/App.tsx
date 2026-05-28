@@ -1,8 +1,9 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, db } from './lib/firebase';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { Toaster } from 'sonner';
 import { Button } from './components/ui/button';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ import CustomPayment from './pages/CustomPayment';
 import PaymentSuccess from './pages/PaymentSuccess';
 import Onboarding from './pages/Onboarding';
 import AdminSetup from './pages/AdminSetup';
+import VideoCall from './pages/VideoCall';
 import Navbar from './components/Navbar';
 
 
@@ -83,7 +85,10 @@ export default function App() {
               setLoading(false);
             },
             (error) => {
-              console.error('App.tsx: error fetching userdoc (handled by snapshot)', error);
+              const msg = error.message?.toLowerCase() || '';
+              if (!msg.includes('offline') && !msg.includes('network')) {
+                console.error('App.tsx: error fetching userdoc (handled by snapshot)', error);
+              }
               setLoading(false);
             }
           );
@@ -116,6 +121,7 @@ export default function App() {
           <Route path="/success" element={<PaymentSuccess />} />
           <Route path="/crypto-payment/:bookingId" element={<CryptoPayment />} />
           <Route path="/pay/:id" element={<CustomPayment />} />
+          <Route path="/meet/:id" element={<VideoCall />} />
           <Route path="/feedback/:bookingId" element={<LeaveFeedback />} />
           
           {/* Protected Creator Routes */}

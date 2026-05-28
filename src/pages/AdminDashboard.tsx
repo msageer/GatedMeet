@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -31,11 +32,9 @@ import {
   collection,
   collectionGroup,
   query,
-  getDocs,
   orderBy,
   limit,
   doc,
-  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,

@@ -1,13 +1,14 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator, indexedDBLocalPersistence, inMemoryPersistence, setPersistence } from 'firebase/auth';
+import { getAuth, indexedDBLocalPersistence, inMemoryPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
 
-// Configure Firestore with simple memory cache and long polling to avoid "client offline" errors in iframe
+// Keep initialization as simple as possible but with memory cache
 export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true
+  localCache: memoryLocalCache(),
+  experimentalForceLongPolling: true
 });
 
 export const auth = getAuth(app);

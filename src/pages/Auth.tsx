@@ -1,3 +1,4 @@
+import { getDocWrapper as getDoc, getDocsWrapper as getDocs } from "@/lib/firestore-utils";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,10 @@ import {
 import {
   setDoc,
   doc,
-  getDoc,
   serverTimestamp,
   query,
   collection,
   where,
-  getDocs,
   updateDoc,
   increment,
 } from "firebase/firestore";
