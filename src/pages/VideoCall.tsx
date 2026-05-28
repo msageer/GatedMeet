@@ -44,7 +44,8 @@ export default function VideoCall() {
             DISABLE_JOIN_LEAVE_NOTIFICATIONS: true
           }}
           userInfo={{
-            displayName: 'Guest'
+            displayName: 'Guest',
+            email: 'guest@example.com'
           }}
           onApiReady={(externalApi) => {
             setLoading(false);

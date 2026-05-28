@@ -363,7 +363,7 @@ export default function BookingPage() {
   if (!creator)
     return (
       <div className="p-12 text-center font-bold text-red-500 text-2xl">
-        Expert found!
+        Expert not found.
       </div>
     );
 
