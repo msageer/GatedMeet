@@ -1,14 +1,14 @@
 import { getDoc as originalGetDoc, getDocs as originalGetDocs, DocumentReference, Query, DocumentData } from 'firebase/firestore';
 
-const MAX_RETRIES = 10;
-const RETRY_DELAY = 1500;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 500;
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function isOfflineError(error: any) {
   if (!error) return false;
   if (error.code === 'unavailable') return true;
-  const msg = error.message?.toLowerCase() || '';
-  if (msg.includes('offline') || msg.includes('network') || msg.includes('failed to fetch')) return true;
+  const msg = (typeof error === 'string' ? error : error.message || String(error) || '').toLowerCase();
+  if (msg.includes('offline') || msg.includes('network') || msg.includes('failed to fetch') || msg.includes('unavailable')) return true;
   return false;
 }
 
@@ -21,8 +21,11 @@ export async function getDocWrapper(ref: DocumentReference<DocumentData, Documen
     } catch (error: any) {
       attempt++;
       if (attempt >= MAX_RETRIES || !isOfflineError(error)) {
-        console.error(`Firestore getDoc failed permanently:`, error);
-        // Return a functional mock snapshot instead of crashing the app
+        if (!isOfflineError(error)) {
+          console.error(`Firestore getDoc failed permanently:`, error);
+        } else {
+          console.warn(`Firestore getDoc offline fallback used after ${attempt} attempts`);
+        }
         return {
           id: ref.id,
           ref,
@@ -46,14 +49,17 @@ export async function getDocsWrapper(query: Query<DocumentData, DocumentData>) {
     } catch (error: any) {
       attempt++;
       if (attempt >= MAX_RETRIES || !isOfflineError(error)) {
-        console.error(`Firestore getDocs failed permanently:`, error);
+        if (!isOfflineError(error)) {
+          console.error(`Firestore getDocs failed permanently:`, error);
+        } else {
+          console.warn(`Firestore getDocs offline fallback used after ${attempt} attempts`);
+        }
         return {
           empty: true,
           size: 0,
           docs: [],
           forEach: () => {},
-          metadata: { fromCache: true, hasPendingWrites: false },
-          query
+          metadata: { fromCache: true, hasPendingWrites: false }
         } as any;
       }
       console.warn(`Firestore getDocs offline error allowed, retrying attempt ${attempt}...`);

@@ -28,6 +28,7 @@ import {
   ShieldCheck,
   Globe,
   AlertCircle,
+  Video,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
@@ -38,7 +39,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -56,6 +56,7 @@ export default function BookingPage() {
   const navigate = useNavigate();
   const [creator, setCreator] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
   const [systemSettings, setSystemSettings] = useState<any>(null);
@@ -66,14 +67,13 @@ export default function BookingPage() {
     details: "",
     date: undefined as Date | undefined,
     time: "",
-    recurring: "none", // none, weekly, bi-weekly
-    sessionsCount: 1, // for recurring
-    billingMode: "upfront" // upfront, recurring
+    recurring: "none",
+    sessionsCount: 1,
+    billingMode: "upfront",
+    meetingType: "google_meet" as "google_meet" | "platform_meeting"
   });
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"fiat" | "crypto" | null>(
-    null,
-  );
+  const [paymentMethod, setPaymentMethod] = useState<"fiat" | "crypto" | null>(null);
 
   useEffect(() => {
     const fetchCreator = async () => {
@@ -85,8 +85,9 @@ export default function BookingPage() {
         ]);
         if (d.exists()) setCreator(d.data());
         if (s.exists()) setSystemSettings(s.data());
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        console.error("Error fetching creator:", err);
+        setError(err.message || "Failed to load expert profile.");
       } finally {
         setLoading(false);
       }
@@ -141,7 +142,6 @@ export default function BookingPage() {
       "saturday",
     ][dateObj.getDay()];
 
-    // Provide default fallback if availability is completely missing
     const defaultAvailability = {
       enabled: dayOfWeek !== "saturday" && dayOfWeek !== "sunday",
       slots: [{ start: "09:00", end: "17:00" }]
@@ -172,7 +172,6 @@ export default function BookingPage() {
         const m = (startMins % 60).toString().padStart(2, "0");
         const timeString = `${h}:${m}`;
 
-        // Check if booked
         const slotStart = new Date(`${dateString}T${timeString}`);
         const slotEnd = new Date(slotStart.getTime() + durationMins * 60000);
 
@@ -239,7 +238,7 @@ export default function BookingPage() {
   const flutterConfig = {
     public_key: systemSettings?.flutterwavePublicKey || "",
     tx_ref: Date.now().toString(),
-    amount: totalAmountValue * 1500, // Converting to NGN Assuming 1 USD = ~1500 NGN
+    amount: totalAmountValue * 1500, // Converting to NGN
     currency: "NGN",
     payment_options: "card,mobilemoney,ussd",
     customer: {
@@ -272,7 +271,6 @@ export default function BookingPage() {
       let firstDocId = "";
 
       for (let i = 0; i < totalSessions; i++) {
-        // Calculate date for this session
         const sessionDate = new Date(formData.date);
         sessionDate.setDate(sessionDate.getDate() + i * intervalDays);
         const sessionDateString = format(sessionDate, "yyyy-MM-dd");
@@ -292,9 +290,10 @@ export default function BookingPage() {
           status: "pending",
           amount: Number(creator?.pricing?.price || 0),
           paymentType: paymentMethod,
+          meetingType: formData.meetingType,
           createdAt: serverTimestamp(),
           isRecurring: isRecurring,
-          recurringGroupId: firstDocId || null, // group them by first doc ID
+          recurringGroupId: firstDocId || null,
         };
 
         const docRef = await addDoc(collection(db, "bookings"), bookingData);
@@ -357,193 +356,152 @@ export default function BookingPage() {
   if (loading)
     return (
       <div className="p-12 text-center animate-pulse">
-        Loading expert profile...
+        Loading creator profile...
+      </div>
+    );
+  if (error)
+    return (
+      <div className="p-12 text-center font-medium text-red-500">
+        {error}
       </div>
     );
   if (!creator)
     return (
       <div className="p-12 text-center font-bold text-red-500 text-2xl">
-        Expert not found.
+        Creator not found.
       </div>
     );
 
   return (
-    <div className="max-w-4xl mx-auto grid md:grid-cols-5 gap-8">
-      {/* Sidebar: Profile Info */}
-      <div className="md:col-span-2 space-y-6">
-        <div className="space-y-4">
-          <div className="w-32 h-32 bg-primary rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white">
-            {creator.photoURL ? (
-              <img
-                src={creator.photoURL}
-                alt={creator.displayName}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl text-white font-bold">
-                {creator.displayName?.[0]}
-              </div>
-            )}
-          </div>
-          <div>
-            <h1 className="text-3xl font-display font-extrabold text-slate-900">
-              {creator.displayName}
-            </h1>
-            <Badge
-              variant="secondary"
-              className="mt-1 font-bold text-primary bg-primary/5"
-            >
-              Verified Educator
-            </Badge>
-          </div>
-          <p className="text-slate-600 leading-relaxed text-lg italic">
-            "{creator.bio || "Ready to help you scale your tech skills."}"
-          </p>
-
-          {/* Socials & Skills block */}
-          {(creator.skills || creator.proofOfWork || creator.twitterUrl || creator.youtubeUrl || creator.instagramUrl || creator.githubUrl || creator.linkedinUrl) && (
-            <div className="flex flex-col gap-3 mt-4">
-              {creator.skills && (
-                <div className="flex flex-wrap gap-2">
-                  {creator.skills.split(',').map((skill: string, i: number) => (
-                    <Badge key={i} variant="outline" className="bg-slate-50 text-slate-700">
-                      {skill.trim()}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              
-              <div className="flex flex-wrap gap-3 mt-1">
-                {creator.proofOfWork && (
-                  <a href={creator.proofOfWork} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary hover:underline flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                    Portfolio / Proof of Work
-                  </a>
-                )}
-                {creator.twitterUrl && (
-                  <a href={creator.twitterUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-blue-500 flex items-center gap-1">
-                    X (Twitter)
-                  </a>
-                )}
-                {creator.linkedinUrl && (
-                  <a href={creator.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-blue-700 flex items-center gap-1">
-                    LinkedIn
-                  </a>
-                )}
-                {creator.githubUrl && (
-                  <a href={creator.githubUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-black flex items-center gap-1">
-                    GitHub
-                  </a>
-                )}
-                {creator.youtubeUrl && (
-                  <a href={creator.youtubeUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-slate-500 hover:text-red-500 flex items-center gap-1">
-                    YouTube
-                  </a>
-                )}
-              </div>
+    <div className="max-w-4xl mx-auto space-y-12 pb-24">
+      {/* Hero Section */}
+      <section className="flex flex-col items-center text-center space-y-6 pt-12">
+        <div className="w-32 h-32 bg-primary rounded-full overflow-hidden shadow-xl border-4 border-white">
+          {creator.photoURL ? (
+            <img
+              src={creator.photoURL}
+              alt={creator.displayName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-4xl text-white font-bold">
+              {creator.displayName?.[0]}
             </div>
           )}
         </div>
-
-        <div className="p-6 rounded-3xl bg-white border-2 border-slate-100 shadow-sm space-y-4">
-          <div className="flex items-center justify-between text-lg">
-            <span className="flex items-center gap-2 text-slate-500">
-              <Clock className="w-5 h-5" /> {creator.pricing.duration} Minutes
-            </span>
-            <span className="font-extrabold text-2xl">
-              ${creator.pricing.price}
-            </span>
-          </div>
-          <div className="text-xs text-slate-400 flex items-center gap-2">
-            <ShieldCheck className="w-3 h-3" /> Secure payment via GatedMeet
-          </div>
+        <div>
+          <h1 className="text-4xl md:text-5xl font-display font-extrabold text-slate-900 tracking-tight">
+            {creator.displayName}
+          </h1>
+          <Badge
+            variant="secondary"
+            className="mt-3 font-bold text-primary bg-primary/10 text-sm px-4 py-1"
+          >
+            Verified Creator
+          </Badge>
         </div>
+        <p className="text-slate-600 leading-relaxed text-xl max-w-2xl font-light">
+          {creator.bio || "Ready to help you scale your tech skills and reach your goals."}
+        </p>
 
         {creator.cancellationPolicy && (
-          <div className="p-6 rounded-3xl bg-amber-50 border-2 border-amber-100 space-y-2">
-            <div className="font-bold flex items-center gap-2 text-amber-900">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-              Cancellation Policy
-            </div>
-            <p className="text-sm text-amber-800 leading-relaxed whitespace-pre-wrap">
-              {creator.cancellationPolicy}
-            </p>
+          <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-4 py-2 rounded-full text-sm font-medium border border-amber-100">
+            <AlertCircle className="w-4 h-4" />
+            <span>Strict cancellation policy applies</span>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Main: Booking Flow */}
-      <Card className="md:col-span-3 rounded-[2.5rem] border-2 shadow-xl overflow-hidden self-start">
-        <CardHeader className="bg-slate-50/50 border-b">
-          <CardTitle>Book your session</CardTitle>
-          <CardDescription>Select a slot and secure your spot.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-8 space-y-8">
-          <AnimatePresence mode="wait">
-            {step === 1 ? (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="space-y-6"
-              >
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>1. Select Date</Label>
-                    <div className="border-2 rounded-2xl p-4 bg-white shadow-sm overflow-hidden flex justify-center">
-                      <Calendar
-                        mode="single"
-                        selected={formData.date}
-                        onSelect={(date) => {
-                          setFormData({
-                            ...formData,
-                            date: date || undefined,
-                            time: "",
-                          });
-                        }}
-                        disabled={(date) => {
-                          const today = new Date();
-                          today.setHours(0, 0, 0, 0);
-                          if (date < today) return true;
-                          const dayOfWeek = [
-                            "sunday",
-                            "monday",
-                            "tuesday",
-                            "wednesday",
-                            "thursday",
-                            "friday",
-                            "saturday",
-                          ][date.getDay()];
-                          
-                          // If availability is missing, assume Mon-Fri are enabled by default
-                          if (!creator.availability || !creator.availability[dayOfWeek]) {
-                            return dayOfWeek === "saturday" || dayOfWeek === "sunday";
-                          }
-                          
-                          return !creator.availability[dayOfWeek].enabled;
-                        }}
-                        className="pointer-events-auto"
-                      />
+      {/* Booking Section at the top below Hero */}
+      <section id="book" className="scroll-mt-8">
+        <Card className="rounded-[2.5rem] border-2 shadow-xl overflow-hidden">
+          <CardHeader className="bg-slate-50 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8">
+            <div>
+              <CardTitle className="text-2xl">Book a Session</CardTitle>
+              <CardDescription className="text-base mt-1">Select a slot, choose your meeting type, and secure your spot.</CardDescription>
+            </div>
+            <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-100">
+              <span className="flex items-center gap-2 text-slate-500 font-medium whitespace-nowrap">
+                <Clock className="w-5 h-5 text-indigo-500" /> {creator.pricing.duration} Mins
+              </span>
+              <div className="w-px h-6 bg-slate-200"></div>
+              <span className="font-extrabold text-2xl text-slate-900 whitespace-nowrap">
+                ${creator.pricing.price}
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 sm:p-8">
+            <AnimatePresence mode="wait">
+              {step === 1 ? (
+                <motion.div
+                  key="step1"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-8"
+                >
+                  <div className="grid md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <Label className="text-base font-bold">1. Select Date</Label>
+                      <div className="border-2 rounded-2xl p-4 bg-white shadow-sm overflow-hidden flex justify-center">
+                        <Calendar
+                          mode="single"
+                          selected={formData.date}
+                          onSelect={(date) => {
+                            setFormData({
+                              ...formData,
+                              date: date || undefined,
+                              time: "",
+                            });
+                          }}
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (date < today) return true;
+                            const dayOfWeek = [
+                              "sunday",
+                              "monday",
+                              "tuesday",
+                              "wednesday",
+                              "thursday",
+                              "friday",
+                              "saturday",
+                            ][date.getDay()];
+                            
+                            if (!creator.availability || !creator.availability[dayOfWeek]) {
+                              return dayOfWeek === "saturday" || dayOfWeek === "sunday";
+                            }
+                            return !creator.availability[dayOfWeek].enabled;
+                          }}
+                          className="pointer-events-auto"
+                        />
+                      </div>
                     </div>
-                  </div>
-                  {formData.date && (
-                    <div className="space-y-2">
-                      <Label>
+
+                    <div className="space-y-4">
+                      <Label className="text-base font-bold">
                         2. Select Time{" "}
-                        {creator.timezone
-                          ? `(${creator.timezone})`
-                          : "(Local Time)"}
+                        <span className="text-slate-400 font-normal">
+                           {creator.timezone ? `(${creator.timezone})` : "(Local Time)"}
+                        </span>
                       </Label>
-                      {availableSlots.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-2">
+                      
+                      {!formData.date ? (
+                        <div className="flex flex-col items-center justify-center h-[300px] border-2 border-dashed rounded-2xl text-slate-400 bg-slate-50/50">
+                          <CalendarIcon className="w-10 h-10 mb-3 opacity-20" />
+                          <p>Select a date to see availability</p>
+                        </div>
+                      ) : availableSlots.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 auto-rows-max h-[300px] overflow-y-auto content-start pr-2">
                           {availableSlots.map((time) => (
                             <Button
                               key={time}
-                              variant={
-                                formData.time === time ? "default" : "outline"
-                              }
-                              className={`h-12 rounded-xl font-bold ${formData.time === time ? "bg-primary text-white border-primary" : "hover:border-primary"}`}
+                              variant={formData.time === time ? "default" : "outline"}
+                              className={`h-12 rounded-xl font-bold transition-all ${
+                                formData.time === time 
+                                ? "bg-primary text-white border-primary shadow-md scale-[1.02]" 
+                                : "hover:border-primary/50 text-slate-700"
+                              }`}
                               onClick={() => setFormData({ ...formData, time })}
                             >
                               {time}
@@ -551,40 +509,77 @@ export default function BookingPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="p-4 rounded-xl border-2 border-dashed text-center text-slate-500 font-medium">
-                          No available slots for this date.
+                        <div className="flex flex-col items-center justify-center h-[300px] rounded-2xl border-2 border-dashed text-center text-slate-500 font-medium bg-slate-50/50">
+                          <AlertCircle className="w-8 h-8 mb-2 opacity-50" />
+                          <p>No available slots for this date.</p>
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
 
                   {formData.time && (
-                    <div className="space-y-4 pt-4 border-t-2">
-                      <div className="space-y-2">
-                        <Label>3. Recurring Sessions (Optional)</Label>
-                        <Select
-                          value={formData.recurring}
-                          onValueChange={(val) =>
-                            setFormData({ ...formData, recurring: val })
-                          }
-                        >
-                          <SelectTrigger className="h-12 border-2 rounded-xl">
-                            <SelectValue placeholder="Select Frequency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              One-time Session
-                            </SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <motion.div 
+                      className="space-y-6 pt-8 border-t-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <Label className="text-base font-bold">Meeting Type (Required)</Label>
+                          <Select
+                            value={formData.meetingType}
+                            onValueChange={(val: any) =>
+                              setFormData({ ...formData, meetingType: val })
+                            }
+                          >
+                            <SelectTrigger className="h-14 border-2 rounded-xl text-md font-medium px-4">
+                              <SelectValue placeholder="Select platform" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="google_meet">
+                                <div className="flex items-center gap-2">
+                                  <Video className="w-4 h-4 text-emerald-600" />
+                                  <span>Google Meet link via Email</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="platform_meeting">
+                                <div className="flex items-center gap-2">
+                                  <Globe className="w-4 h-4 text-indigo-600" />
+                                  <span>Built-in Platform Meeting</span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-slate-500 ml-1">
+                            {formData.meetingType === 'google_meet' 
+                              ? 'A standard Google Meet link will be generated automatically.' 
+                              : 'You and the creator will join an embedded meeting room on this platform.'}
+                          </p>
+                        </div>
+                        <div className="space-y-3">
+                          <Label className="text-base font-bold">Recurring Sessions (Optional)</Label>
+                          <Select
+                            value={formData.recurring}
+                            onValueChange={(val) =>
+                              setFormData({ ...formData, recurring: val })
+                            }
+                          >
+                            <SelectTrigger className="h-14 border-2 rounded-xl text-md">
+                              <SelectValue placeholder="Select Frequency" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">One-time Session</SelectItem>
+                              <SelectItem value="weekly">Weekly</SelectItem>
+                              <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
                       {formData.recurring !== "none" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border">
                           <div className="space-y-2">
-                            <Label>Number of Sessions</Label>
+                            <Label className="font-bold">Number of Sessions</Label>
                             <Input
                               type="number"
                               min={2}
@@ -596,18 +591,19 @@ export default function BookingPage() {
                                   sessionsCount: parseInt(e.target.value) || 2,
                                 })
                               }
-                              className="h-12 border-2 rounded-xl"
+                              className="h-12 border-2 rounded-xl bg-white"
                             />
+                            <p className="text-xs text-slate-500">Max 10 sessions</p>
                           </div>
                           <div className="space-y-2">
-                             <Label>Billing Method</Label>
+                             <Label className="font-bold">Billing Method</Label>
                              <Select
                                value={formData.billingMode}
                                onValueChange={(val) =>
                                  setFormData({ ...formData, billingMode: val })
                                }
                              >
-                               <SelectTrigger className="h-12 border-2 rounded-xl">
+                               <SelectTrigger className="h-12 border-2 rounded-xl bg-white">
                                  <SelectValue placeholder="Billing Method" />
                                </SelectTrigger>
                                <SelectContent>
@@ -618,132 +614,232 @@ export default function BookingPage() {
                           </div>
                         </div>
                       )}
+
+                      <div className="space-y-5 pt-8 border-t-2">
+                        <Label className="text-xl font-bold block mb-4">Your Details</Label>
+                        <div className="grid md:grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <Label className="font-bold text-slate-700">Full Name</Label>
+                            <Input
+                              placeholder="John Doe"
+                              value={formData.name}
+                              onChange={(e) =>
+                                setFormData({ ...formData, name: e.target.value })
+                              }
+                              className="h-14 border-2 rounded-xl px-4 text-base"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="font-bold text-slate-700">Email Address</Label>
+                            <Input
+                              type="email"
+                              placeholder="john@example.com"
+                              value={formData.email}
+                              onChange={(e) =>
+                                setFormData({ ...formData, email: e.target.value })
+                              }
+                              className="h-14 border-2 rounded-xl px-4 text-base"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="font-bold text-slate-700">What would you like to discuss? (Optional)</Label>
+                          <Textarea
+                            placeholder="Help the creator prepare for your session..."
+                            value={formData.details}
+                            onChange={(e) =>
+                              setFormData({ ...formData, details: e.target.value })
+                            }
+                            className="min-h-[120px] border-2 rounded-xl p-4 text-base resize-y"
+                          />
+                        </div>
+                        <Button
+                          className="w-full h-16 rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-all"
+                          onClick={() => setStep(2)}
+                        >
+                          Review Booking & Pay
+                        </Button>
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="step2"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="space-y-6"
+                >
+                  <div className="p-6 rounded-[2rem] bg-slate-50 border-2 space-y-4">
+                    <h3 className="font-bold text-lg text-slate-900 border-b pb-2">Booking Summary</h3>
+                    <div className="grid grid-cols-2 gap-y-3 text-sm">
+                      <span className="text-slate-500">Selected Session:</span>
+                      <span className="font-bold text-right text-slate-900">
+                        {formData.date ? format(formData.date, "PPP") : ""} <br className="md:hidden"/>at {formData.time}
+                      </span>
+                      <span className="text-slate-500">Meeting Location:</span>
+                      <span className="font-bold text-right text-slate-900 flex items-center justify-end gap-1">
+                        {formData.meetingType === 'google_meet' ? (
+                          <><Video className="w-3 h-3 text-emerald-500" /> Google Meet</>
+                        ) : (
+                          <><Globe className="w-3 h-3 text-indigo-500" /> In-Platform Meeting</>
+                        )}
+                      </span>
+                      <span className="text-slate-500">Client Name:</span>
+                      <span className="font-bold text-right text-slate-900">{formData.name}</span>
+                      <span className="text-slate-500">Client Email:</span>
+                      <span className="font-bold text-right break-all text-slate-900">{formData.email}</span>
+                      <span className="text-slate-500">Total Amount:</span>
+                      <span className="font-black text-right text-primary text-lg">
+                         ${totalAmountValue} {formData.billingMode === "recurring" && formData.recurring !== "none" ? " / session" : ""}
+                      </span>
                     </div>
+                  </div>
+
+                  <h3 className="font-bold text-lg text-slate-900 pt-2">Select Payment Method</h3>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Button
+                      variant="outline"
+                      className="h-20 rounded-2xl font-bold text-left justify-start gap-4 border-2 group hover:border-primary transition-colors hover:shadow-md"
+                      onClick={() => handleBookingClick("fiat")}
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
+                        <Banknote className="w-6 h-6" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-base truncate">Pay via Card / Bank</div>
+                        <div className="text-xs text-slate-400 truncate">
+                          Secured by Flutterwave
+                        </div>
+                      </div>
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      className="h-20 rounded-2xl font-bold text-left justify-start gap-4 border-2 group hover:border-blue-500 transition-colors hover:shadow-md"
+                      onClick={() => handleBookingClick("crypto")}
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                        <CreditCard className="w-6 h-6" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-base truncate">Pay with Crypto</div>
+                        <div className="text-xs text-slate-400 truncate">
+                          TON, SOL, BASE, ETH
+                        </div>
+                      </div>
+                    </Button>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button
+                      variant="ghost"
+                      className="w-full h-12 text-slate-500 hover:text-slate-900"
+                      onClick={() => setStep(1)}
+                    >
+                      Go Back to Edit Details
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Portfolio & About Section */}
+      <section className="grid md:grid-cols-2 gap-8">
+        {/* About Card */}
+        <div className="p-8 rounded-[2.5rem] bg-white border shadow-sm space-y-6 self-start">
+          <h2 className="text-2xl font-bold text-slate-900">About Me</h2>
+          
+          {(creator.skills || creator.twitterUrl || creator.youtubeUrl || creator.instagramUrl || creator.githubUrl || creator.linkedinUrl) && (
+            <div className="space-y-6">
+              {creator.skills && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Expertise</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {creator.skills.split(',').map((skill: string, i: number) => (
+                      <Badge key={i} variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-1 font-medium text-sm">
+                        {skill.trim()}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Connect</h3>
+                <div className="flex flex-wrap gap-3">
+                  {creator.twitterUrl && (
+                    <a href={creator.twitterUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl bg-slate-50 border hover:bg-slate-100 text-sm font-semibold text-slate-700 transition flex items-center gap-2">
+                      X (Twitter)
+                    </a>
+                  )}
+                  {creator.linkedinUrl && (
+                    <a href={creator.linkedinUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl bg-slate-50 border hover:bg-slate-100 text-sm font-semibold text-slate-700 transition flex items-center gap-2">
+                      LinkedIn
+                    </a>
+                  )}
+                  {creator.githubUrl && (
+                    <a href={creator.githubUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl bg-slate-50 border hover:bg-slate-100 text-sm font-semibold text-slate-700 transition flex items-center gap-2">
+                      GitHub
+                    </a>
+                  )}
+                  {creator.youtubeUrl && (
+                    <a href={creator.youtubeUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl bg-slate-50 border hover:bg-slate-100 text-sm font-semibold text-slate-700 transition flex items-center gap-2">
+                      YouTube
+                    </a>
+                  )}
+                  {creator.instagramUrl && (
+                    <a href={creator.instagramUrl} target="_blank" rel="noopener noreferrer" className="px-4 py-2 rounded-xl bg-slate-50 border hover:bg-slate-100 text-sm font-semibold text-slate-700 transition flex items-center gap-2">
+                      Instagram
+                    </a>
                   )}
                 </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Your Name</Label>
-                    <Input
-                      placeholder="John Doe"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      className="h-12 border-2 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Email (for meeting link)</Label>
-                    <Input
-                      type="email"
-                      placeholder="john@example.com"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="h-12 border-2 rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Short Details (Optional)</Label>
-                    <Textarea
-                      placeholder="What would you like to discuss?"
-                      value={formData.details}
-                      onChange={(e) =>
-                        setFormData({ ...formData, details: e.target.value })
-                      }
-                      className="min-h-[100px] border-2 rounded-xl"
-                    />
-                  </div>
-                </div>
-                <Button
-                  className="w-full h-14 rounded-2xl font-bold text-lg"
-                  onClick={() => setStep(2)}
-                >
-                  Review & Pay
-                </Button>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="space-y-6"
-              >
-                <div className="p-4 rounded-2xl bg-slate-50 border space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Session</span>
-                    <span className="font-bold">
-                      {formData.date ? format(formData.date, "PPP") : "No date selected"} at {formData.time}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Client</span>
-                    <span className="font-bold">{formData.name}</span>
-                  </div>
-                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
-                <div className="grid gap-4">
-                  <Button
-                    variant="outline"
-                    className="h-16 rounded-2xl font-bold text-left justify-start gap-4 border-2 group hover:border-primary transition-colors"
-                    onClick={() => handleBookingClick("fiat")}
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                      <Banknote className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm">Pay via Card / Bank</div>
-                      <div className="text-xs text-slate-400">
-                        Fiat (Flutterwave)
-                      </div>
-                    </div>
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="h-16 rounded-2xl font-bold text-left justify-start gap-4 border-2 group hover:border-blue-500 transition-colors"
-                    onClick={() => handleBookingClick("crypto")}
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      <CreditCard className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-sm">Pay with Crypto</div>
-                      <div className="text-xs text-slate-400">
-                        TON / SOL / BASE
-                      </div>
-                    </div>
-                  </Button>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => setStep(1)}
-                >
-                  Go Back
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
+        {/* Portfolio / Links Card */}
+        {creator.proofOfWork && (
+          <div className="p-8 rounded-[2.5rem] bg-slate-900 border-none shadow-xl text-white space-y-6 self-start">
+            <h2 className="text-2xl font-bold">Portfolio / Proof of Work</h2>
+            <p className="text-slate-400 font-light leading-relaxed">
+              Check out my latest projects, articles, and public work to see what we can achieve together.
+            </p>
+            <a 
+              href={creator.proofOfWork} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="inline-flex items-center gap-2 px-6 py-4 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition shadow-lg"
+            >
+              <Globe className="w-5 h-5" />
+              View Portfolio
+            </a>
+          </div>
+        )}
+      </section>
 
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="rounded-3xl sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Confirm Your Booking</DialogTitle>
+            <DialogTitle>Confirm Booking</DialogTitle>
             <DialogDescription>
-              Please review the details of your session before payment.
+              Please review your details before payment.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Expert</span>
-              <span className="font-bold">{creator.displayName}</span>
+            <div className="flex justify-between border-b pb-2 items-center">
+              <span className="text-slate-500">Creator</span>
+              <span className="font-bold flex items-center gap-2">
+                 <div className="w-6 h-6 bg-slate-200 rounded-full overflow-hidden shrink-0">
+                    {creator.photoURL && <img src={creator.photoURL} alt="avatar" className="w-full h-full object-cover"/>}
+                 </div>
+                 {creator.displayName}
+              </span>
             </div>
             {formData.recurring === "none" ? (
                 <>
@@ -777,17 +873,25 @@ export default function BookingPage() {
                    </div>
                 </div>
             )}
+            
+            <div className="flex justify-between text-sm py-1 bg-slate-50 px-3 rounded-lg border">
+               <span className="text-slate-500 font-medium">Meeting Type</span>
+               <span className="font-bold text-slate-800">
+                 {formData.meetingType === 'google_meet' ? 'Google Meet Entry' : 'Platform Room'}
+               </span>
+            </div>
+
             {formData.recurring !== "none" && (
-              <div className="flex justify-between border-t pt-2">
+              <div className="flex justify-between border-t pt-2 mt-2">
                 <span className="text-slate-500">Frequency</span>
                 <span className="font-bold uppercase text-indigo-600">
                   {formData.recurring} ({formData.sessionsCount} sessions)
                 </span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-slate-500">Total Price</span>
-              <span className="font-black text-xl text-primary flex flex-col items-end">
+            <div className="flex justify-between items-end pt-2">
+              <span className="text-slate-500 text-lg font-medium">Total Price</span>
+              <span className="font-black text-3xl text-primary flex flex-col items-end leading-none">
                 <span>
                  $
                  {formData.billingMode === "recurring" 
@@ -795,20 +899,21 @@ export default function BookingPage() {
                    : creator.pricing.price * (formData.recurring !== "none" ? formData.sessionsCount : 1)}
                 </span>
                 {formData.billingMode === "recurring" && formData.recurring !== "none" && (
-                   <span className="text-xs text-slate-400 font-medium tracking-normal mt-1">/ session (subscription)</span>
+                   <span className="text-xs text-slate-400 font-medium tracking-normal mt-1 leading-normal">/ session</span>
                 )}
               </span>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-3 sm:gap-0 mt-4">
             <Button
               variant="outline"
+              className="rounded-xl h-12"
               onClick={() => setShowConfirmDialog(false)}
             >
               Cancel
             </Button>
-            <Button onClick={executeBooking} className="font-bold">
-              Proceed to Payment
+            <Button onClick={executeBooking} className="rounded-xl h-12 font-bold px-8 shadow-md">
+              Complete Payment
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -816,3 +921,4 @@ export default function BookingPage() {
     </div>
   );
 }
+

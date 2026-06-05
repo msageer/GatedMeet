@@ -26,7 +26,7 @@ export default function Home() {
                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-bold tracking-tight uppercase"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              The Next Evolution of Tech Education
+              The Next Evolution for Creators
             </motion.div>
             
             <motion.h1 
@@ -36,7 +36,7 @@ export default function Home() {
               transition={{ delay: 0.1, duration: 0.8, ease: "circOut" }}
             >
               Monetize <br />
-              Your <span className="text-primary italic">Expertise.</span>
+              Your <span className="text-primary italic">Audience.</span>
             </motion.h1>
             
             <motion.p 
@@ -45,8 +45,8 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.8 }}
             >
-              The zero-risk platform for tech educators. Share your link, 
-              get paid instantly, and let us handle the scheduling chaos.
+              Get a stunning personal landing page for your brand. Share your portfolio,
+              accept bookings directly, and jump into calls automatically. Zero friction.
             </motion.p>
             
             <motion.div 
@@ -56,7 +56,7 @@ export default function Home() {
               transition={{ delay: 0.5 }}
             >
               <Link to="/auth" className={buttonVariants({ size: "lg", className: "h-16 px-10 text-lg font-bold rounded-2xl shadow-2xl shadow-primary/20 group" })}>
-                Get Started Free
+                Build Your Page Free
                 <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link to="/auth" className="text-lg font-bold hover:text-primary transition-colors flex items-center gap-2 group">
@@ -112,11 +112,11 @@ export default function Home() {
         <div className="pt-24 flex items-center gap-12 opacity-30 grayscale saturate-0 pointer-events-none overflow-hidden whitespace-nowrap">
           <Link className="text-2xl font-bold flex items-center gap-2"><Globe className="w-6 h-6" /> GLOBAL REACH</Link>
           <div className="w-2 h-2 rounded-full bg-slate-400" />
-          <Link className="text-2xl font-bold flex items-center gap-2"><Zap className="w-6 h-6" /> INSTANT PAYOUTS</Link>
+          <Link className="text-2xl font-bold flex items-center gap-2"><Zap className="w-6 h-6" /> PLATFORM MEETINGS</Link>
           <div className="w-2 h-2 rounded-full bg-slate-400" />
-          <Link className="text-2xl font-bold flex items-center gap-2"><ShieldCheck className="w-6 h-6" /> VERIFIED EDUCATORS</Link>
+          <Link className="text-2xl font-bold flex items-center gap-2"><ShieldCheck className="w-6 h-6" /> VERIFIED CREATORS</Link>
           <div className="w-2 h-2 rounded-full bg-slate-400" />
-          <Link className="text-2xl font-bold flex items-center gap-2"><Clock className="w-6 h-6" /> AUTO CALENDAR</Link>
+          <Link className="text-2xl font-bold flex items-center gap-2"><Clock className="w-6 h-6" /> AUTOMATED SYNC</Link>
         </div>
       </section>
 
@@ -125,21 +125,21 @@ export default function Home() {
         <div className="flex flex-col gap-6">
           <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
             <h2 className="text-5xl font-display font-bold tracking-tight max-w-md">Everything you need to <span className="italic text-primary">scale.</span></h2>
-            <p className="text-slate-500 max-w-sm text-lg">Focus on teaching, we build the rails for your business growth.</p>
+            <p className="text-slate-500 max-w-sm text-lg">Focus on your brand, we maintain the rails for your business growth.</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
                 icon: Zap,
-                title: "Seamless Flow",
-                desc: "Payments trigger automatic calendar invites and Google Meet links. Zero manual work.",
+                title: "Personal Landing Page",
+                desc: "A fully dedicated page for your portfolio, bio, and automated session bookings.",
                 color: "bg-blue-500"
               },
               {
                 icon: CreditCard,
-                title: "Global Payments",
-                desc: "Withdraw in Fiat or Crypto. We support local banking and the TON blockchain ecosystem.",
+                title: "Internal & Google Meet",
+                desc: "Host meetings directly on our platform via built-in audio/video, or sync with Google Meet.",
                 color: "bg-orange-500"
               },
               {

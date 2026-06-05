@@ -84,7 +84,11 @@ export default function PaymentSuccess() {
                 // If it was already paid by webhook it might have a link, otherwise generate one
                 let meetingLink = docData.meetingLink;
                 if (!meetingLink) {
-                   meetingLink = creatorData.meetingUrl || `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                   if (docData.meetingType === 'platform_meeting') {
+                     meetingLink = `${window.location.origin}/meet/${firstDocSnap.id}`;
+                   } else {
+                     meetingLink = creatorData.meetingUrl || `https://meet.google.com/${Math.random().toString(36).substring(2, 5)}-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+                   }
                    await updateDoc(doc(db, "bookings", firstDocSnap.id), { meetingLink });
                 }
 
