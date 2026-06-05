@@ -217,21 +217,24 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <header className="flex justify-between items-start">
-        <div>
-          <h1 className="text-4xl font-display font-extrabold tracking-tight">
+    <div className="space-y-10 max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <header className="flex flex-col md:flex-row md:items-start justify-between gap-6 bg-slate-950 p-8 md:p-10 rounded-[3rem] border border-slate-900 shadow-2xl relative overflow-hidden text-white">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="relative z-10">
+          <h1 className="text-5xl font-display font-black tracking-tighter mb-2 flex items-center gap-3">
+            <span className="bg-primary text-slate-950 px-3 py-1 rounded-xl text-3xl">🚀</span>
             Master Admin
           </h1>
-          <p className="text-slate-500 text-lg">
-            Platform health and revenue overview.
+          <p className="text-slate-400 text-lg max-w-xl">
+            Global platform health, revenue overview, and critical system controls.
           </p>
         </div>
-        <div className="flex gap-2">
-           <Button variant="outline" size="sm" onClick={() => navigate("/admin-setup")}>
+        <div className="flex gap-3 relative z-10 mt-4 md:mt-0">
+           <Button variant="secondary" className="h-12 px-6 rounded-2xl font-bold bg-white text-slate-900 hover:bg-slate-200" onClick={() => navigate("/admin-setup")}>
              Admin Setup
            </Button>
-           <Button variant="outline" size="sm" onClick={fetchData}>
+           <Button variant="outline" className="h-12 px-6 rounded-2xl font-bold border-slate-700 hover:bg-slate-800 text-white" onClick={fetchData}>
+             <RefreshCw className="w-4 h-4 mr-2" />
              Refresh
            </Button>
         </div>
@@ -239,14 +242,16 @@ export default function AdminDashboard() {
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card className="rounded-[2rem] border-2 border-red-100 bg-red-50/10">
+        <Card className="rounded-[2.5rem] border-0 bg-red-500/10 hover:bg-red-500/20 transition-colors">
           <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-widest text-red-900">Emergency & Batch Actions</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-red-600 flex items-center gap-2">
+              <Activity className="w-4 h-4" /> Emergency Controls
+            </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-4">
              <Button 
               variant="destructive" 
-              size="sm"
+              className="rounded-xl font-bold shadow-lg shadow-red-500/20"
               onClick={() => {
                 const emails = ["msageertv@gmail.com", "msageeroffice@gmail.com"];
                 if (window.confirm(`Delete data for the following users? \n${emails.join("\n")}`)) {
@@ -261,17 +266,19 @@ export default function AdminDashboard() {
                 }
               }}
              >
-               Cleanup Requested Users
+               Purge Test Users
              </Button>
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2rem] border-2 border-primary/20 bg-primary/5">
+        <Card className="rounded-[2.5rem] border-0 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors">
           <CardHeader>
-            <CardTitle className="text-sm uppercase tracking-widest text-primary">System Config Quick Tools</CardTitle>
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-indigo-600 flex items-center gap-2">
+              <Settings className="w-4 h-4" /> System Config
+            </CardTitle>
           </CardHeader>
           <CardContent>
-             <p className="text-xs text-slate-500 italic">Global settings controls are located at the bottom of the dashboard.</p>
+             <p className="text-sm text-indigo-800/70 font-medium">Global settings controls (API Keys, Merchant Wallets) are available at the bottom of the dashboard.</p>
           </CardContent>
         </Card>
       </div>
@@ -284,37 +291,44 @@ export default function AdminDashboard() {
             value: `$${stats.gmv.toLocaleString()}`,
             icon: TrendingUp,
             color: "text-green-600",
+            bg: "bg-green-100"
           },
           {
-            label: "Total Platform Fees",
+            label: "Total Fees Collected",
             value: `$${stats.totalFees.toLocaleString()}`,
             icon: DollarSign,
-            color: "text-primary",
+            color: "text-blue-600",
+            bg: "bg-blue-100"
           },
           {
             label: "Active Creators",
             value: stats.creators,
             icon: Users,
-            color: "text-blue-600",
+            color: "text-purple-600",
+            bg: "bg-purple-100"
           },
           {
             label: "Pending Payouts",
             value: `$${totalPendingAmount.toLocaleString()}`,
             icon: Activity,
-            color: "text-blue-500",
+            color: "text-orange-600",
+            bg: "bg-orange-100"
           },
         ].map((item, i) => (
-          <Card key={i} className="rounded-3xl border-2">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">
-                  {item.label}
-                </p>
-                <item.icon className={`w-5 h-5 ${item.color}`} />
+          <Card key={i} className="rounded-[2.5rem] border-0 bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+             <CardContent className="p-8 pb-6">
+              <div className="flex items-start justify-between mb-4 z-10 relative">
+                <div className={`p-4 rounded-[2rem] ${item.bg} ${item.color} shadow-sm`}>
+                  <item.icon className={`w-6 h-6`} />
+                </div>
               </div>
-            </CardHeader>
-            <CardContent>
-              <h3 className="text-3xl font-extrabold">{item.value}</h3>
+              <div className="z-10 relative space-y-1">
+                 <h3 className="text-4xl font-display font-black text-slate-900">{item.value}</h3>
+                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  {item.label}
+                 </p>
+              </div>
+              <div className={`absolute -right-6 -bottom-6 w-32 h-32 ${item.bg} rounded-full opacity-50 blur-3xl pointer-events-none`} />
             </CardContent>
           </Card>
         ))}

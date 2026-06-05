@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, storage } from "@/lib/firebase";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
@@ -69,20 +69,7 @@ export default function Profile() {
       if (!auth.currentUser) return;
       try {
         const docRef = doc(db, "users", auth.currentUser.uid);
-        
-        let docSnap;
-        let retries = 3;
-        while (retries > 0) {
-          try {
-            docSnap = await getDoc(docRef);
-            break;
-          } catch (e: any) {
-             retries--;
-             if (retries === 0) throw e;
-             await new Promise(r => setTimeout(r, 1000));
-          }
-        }
-        
+        const docSnap = await getDoc(docRef);
         const data = docSnap?.exists() ? docSnap.data() : {};
 
         // Generate referral code if missing
@@ -120,7 +107,7 @@ export default function Profile() {
         setProfile({
           displayName: data.displayName || "",
           bio: data.bio || "",
-          photoBase64: data.photoBase64 || "",
+          photoURL: data.photoURL || data.photoBase64 || "",
           pricing: data.pricing || {
             price: 50,
             currency: "USD",
@@ -177,19 +164,23 @@ export default function Profile() {
       const { updateProfile } = await import("firebase/auth");
       try {
         await updateProfile(auth.currentUser, {
-          photoURL: profile.photoBase64 || auth.currentUser.photoURL,
+          photoURL: profile.photoURL || auth.currentUser.photoURL,
           displayName: profile.displayName || auth.currentUser.displayName,
         });
       } catch (e) {
-        console.warn("Could not update auth profile (URL too long?)", e);
+        console.warn("Could not update auth profile", e);
       }
 
-      const { platformFeeTier, referralCount, referralBonuses, referredBy, referralCode, role, uid, email, createdAt, ...allowedUpdates } = profile;
+      const { platformFeeTier, referralCount, referralBonuses, referredBy, referralCode, role, uid, email, createdAt, photoBase64, ...allowedUpdates } = profile;
 
       // Remove undefined values since Firestore rejects them
       const cleanUpdates = Object.fromEntries(
         Object.entries(allowedUpdates).filter(([_, v]) => v !== undefined)
       );
+      
+      const { deleteField } = await import("firebase/firestore");
+      // Clean up legacy photoBase64 from DB to shrink doc payload
+      cleanUpdates.photoBase64 = deleteField();
 
       await setDoc(doc(db, "users", auth.currentUser.uid), {
         ...cleanUpdates,
@@ -232,8 +223,8 @@ export default function Profile() {
           <CardContent className="space-y-4">
             <div className="space-y-2 flex flex-col items-center sm:flex-row sm:space-y-0 sm:space-x-6 pb-4">
               <div className="w-24 h-24 rounded-full bg-slate-100 border-2 overflow-hidden flex items-center justify-center relative group">
-                {profile.photoBase64 || auth.currentUser?.photoURL ? (
-                  <img src={profile.photoBase64 || auth.currentUser?.photoURL || ''} alt="Avatar" className="w-full h-full object-cover" />
+                {profile.photoURL || auth.currentUser?.photoURL ? (
+                  <img src={profile.photoURL || auth.currentUser?.photoURL || ''} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
                   <span className="text-slate-400 text-3xl font-bold bg-slate-100 w-full h-full flex items-center justify-center">
                     {profile.displayName?.charAt(0) || 'U'}
@@ -241,27 +232,21 @@ export default function Profile() {
                 )}
                 <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                   <span className="text-xs font-semibold">Change</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        // resize and compress in an image element using canvas to save firestore space
-                        const img = new Image();
-                        img.onload = () => {
-                          const canvas = document.createElement("canvas");
-                          const MAX_WIDTH = 256;
-                          const scaleSize = MAX_WIDTH / img.width;
-                          canvas.width = MAX_WIDTH;
-                          canvas.height = img.height * scaleSize;
-                          const ctx = canvas.getContext("2d");
-                          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-                          setProfile({ ...profile, photoBase64: dataUrl });
-                        };
-                        img.src = event.target?.result as string;
-                      };
-                      reader.readAsDataURL(file);
+                      toast.info("Uploading image...");
+                      try {
+                        const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
+                        const storageRef = ref(storage, `avatars/${auth.currentUser?.uid}-${Date.now()}`);
+                        await uploadBytes(storageRef, file);
+                        const url = await getDownloadURL(storageRef);
+                        setProfile({ ...profile, photoURL: url });
+                        toast.success("Image uploaded!");
+                      } catch (err) {
+                        console.error(err);
+                        toast.error("Failed to upload image. Please try again.");
+                      }
                     }
                   }} />
                 </label>

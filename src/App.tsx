@@ -117,7 +117,6 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/onboarding" element={user ? <Onboarding /> : <Auth />} />
-          <Route path="/booking/:creatorId" element={<BookingPage />} />
           <Route path="/success" element={<PaymentSuccess />} />
           <Route path="/crypto-payment/:bookingId" element={<CryptoPayment />} />
           <Route path="/pay/:id" element={<CustomPayment />} />
@@ -132,6 +131,9 @@ export default function App() {
           {/* Protected Admin Routes */}
           <Route path="/admin" element={role === 'admin' ? <AdminDashboard /> : <div className="p-12 text-center">Unauthorized</div>} />
           <Route path="/admin-setup" element={user?.email === 'msagirgroup@gmail.com' ? <AdminSetup /> : <div className="p-12 text-center">Restricted Access</div>} />
+
+          {/* Catch-all route for Creator Profiles */}
+          <Route path="/:username" element={<BookingPage />} />
         </Routes>
       </main>
       <Toaster position="bottom-right" richColors />

@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, indexedDBLocalPersistence, inMemoryPersistence, setPersistence } from 'firebase/auth';
 import { getFirestore, initializeFirestore, memoryLocalCache } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = initializeApp(firebaseConfig);
@@ -12,6 +13,7 @@ export const db = initializeFirestore(app, {
 });
 
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 // In-memory cache for Google Workspace access token
 let cachedAccessToken: string | null = null;

@@ -73,8 +73,10 @@ export default function Dashboard() {
     retentionRate: 0,
   });
   const [chartData, setChartData] = useState<any[]>([]);
+  const [earningsData, setEarningsData] = useState<any[]>([]);
   const [retentionData, setRetentionData] = useState<any[]>([]);
   const [ratingData, setRatingData] = useState<any[]>([]);
+  const [username, setUsername] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     new Date(),
   );
@@ -126,6 +128,26 @@ export default function Dashboard() {
 
   const processAnalytics = (data: Booking[], reviews: any[]) => {
 
+
+    const last30Days = Array.from({length: 30}).map((_, i) => {
+      const d = subDays(new Date(), Math.abs(i - 29));
+      return {
+        dateStr: format(d, 'MMM dd'),
+        dateObj: d,
+        earnings: 0
+      };
+    });
+
+    data.forEach(b => {
+       if (b.status === "paid" || b.status === "confirmed") {
+         const bd = new Date(b.startTime);
+         const dObj = last30Days.find(d => isSameDay(d.dateObj, bd));
+         if (dObj) {
+           dObj.earnings += (b.amount || 0) * 0.9;
+         }
+       }
+    });
+    setEarningsData(last30Days);
 
     // Group by day for the last 7 days
     const last7Days = Array.from({length: 7}).map((_, i) => {
@@ -231,19 +253,8 @@ export default function Dashboard() {
       if (!auth.currentUser) return;
       try {
         const docRef = doc(db, "users", auth.currentUser.uid);
-        let userDoc;
-        let retries = 3;
-        while (retries > 0) {
-          try {
-            userDoc = await getDoc(docRef);
-            break;
-          } catch(e: any) {
-             retries--;
-             if (retries === 0) throw e;
-             await new Promise(r => setTimeout(r, 1000));
-          }
-        }
-        
+        const userDoc = await getDoc(docRef);
+
         if (userDoc?.exists() && userDoc.data().setupComplete === false) {
           navigate("/onboarding");
           return;
@@ -251,6 +262,7 @@ export default function Dashboard() {
         
         if (userDoc.exists()) {
            setAvailability(userDoc.data().availability || {});
+           setUsername(userDoc.data().username || auth.currentUser.uid);
         }
 
         await fetchBookings();
@@ -264,7 +276,7 @@ export default function Dashboard() {
   }, []);
 
   const shareBookingLink = () => {
-    const link = `${window.location.origin}/booking/${auth.currentUser?.uid}`;
+    const link = `${window.location.origin}/${username}`;
     navigator.clipboard.writeText(link);
     toast.success("Booking link copied to clipboard!");
   };
@@ -574,49 +586,49 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-display font-extrabold tracking-tight">
+    <div className="space-y-10 max-w-7xl mx-auto px-4 md:px-8 py-8">
+      <header className="flex flex-col md:flex-row md:items-start justify-between gap-6 bg-white py-8 px-6 md:p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+        <div className="relative z-10">
+          <h1 className="text-5xl font-display font-black tracking-tighter text-slate-900 mb-2">
             Creator Dashboard
           </h1>
-          <p className="text-slate-500 mb-4">
-            Manage your sessions and earnings with ease.
+          <p className="text-slate-500 text-lg max-w-xl">
+            Manage your sessions, track earnings, and synchronize with your workspace in real-time.
           </p>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-3 mt-6 flex-wrap">
             <Link
               to="/dashboard/profile"
               className={buttonVariants({
                 variant: "outline",
-                size: "sm",
-                className: "rounded-full font-bold bg-white",
+                className: "rounded-2xl font-bold bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700",
               })}
             >
               Services & Pricing
             </Link>
+            <Button
+              variant="outline"
+              onClick={shareBookingLink}
+              className="rounded-2xl border-2 font-bold flex gap-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/30"
+            >
+              <LinkIcon className="w-4 h-4" />
+              Copy Booking Link
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3 relative z-10">
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={handleBulkSyncWorkspace}
-            className="rounded-xl border-2 font-bold flex gap-2"
+            className="rounded-2xl font-bold flex gap-2 h-12 px-6 shadow-sm bg-slate-900 text-white hover:bg-slate-800"
           >
             <RefreshCw className="w-4 h-4" />
             Sync Workspace
           </Button>
-          <Button
-            variant="outline"
-            onClick={shareBookingLink}
-            className="rounded-xl border-2 font-bold flex gap-2"
-          >
-            <LinkIcon className="w-4 h-4" />
-            Copy Booking Link
-          </Button>
           <Link
             to="/dashboard/profile"
             className={buttonVariants({
-              className: "rounded-xl font-bold px-6",
+              className: "rounded-2xl font-bold h-12 px-8 shadow-xl shadow-primary/20",
             })}
           >
             Set Availability
@@ -626,33 +638,34 @@ export default function Dashboard() {
 
       {/* Google Workspace Section */}
       {isWorkspaceConnected && (googleEvents.length > 0 || googleTasks.length > 0) && (
-        <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden bg-gradient-to-br from-white to-blue-50/50">
-          <CardHeader className="flex flex-row items-center justify-between">
+        <Card className="rounded-[3rem] border-0 shadow-xl overflow-hidden bg-slate-900 text-white p-2">
+          <CardHeader className="flex flex-row items-center justify-between border-b border-slate-800 pb-6 pt-8 px-8">
             <div>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <CalendarIcon className="w-6 h-6 text-blue-500" />
+              <CardTitle className="flex items-center gap-3 text-3xl font-black tracking-tight">
+                <CalendarIcon className="w-8 h-8 text-indigo-400" />
                 Workspace Agenda
               </CardTitle>
-              <CardDescription>Your upcoming Google Calendar events and Google Tasks.</CardDescription>
+              <CardDescription className="text-slate-400 text-base mt-2">Your synced Google Calendar events and pending tasks.</CardDescription>
             </div>
-            <Button onClick={handleBulkSyncWorkspace} variant="outline" size="sm" className="hidden sm:flex">
+            <Button onClick={handleBulkSyncWorkspace} variant="secondary" className="hidden sm:flex rounded-2xl bg-slate-800 text-white hover:bg-slate-700 border border-slate-700 px-6 h-12 font-bold">
               <RefreshCw className="w-4 h-4 mr-2" />
-              Sync Bookings
+              Sync Now
             </Button>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 p-8 max-h-[400px] overflow-y-auto custom-scrollbar">
             <div className="space-y-4">
-              <h4 className="font-bold text-slate-700 flex items-center gap-2"><Clock className="w-4 h-4"/> Upcoming Events</h4>
+              <h4 className="font-bold text-indigo-300 flex items-center gap-2 uppercase tracking-widest text-sm"><Clock className="w-4 h-4"/> Upcoming Events</h4>
               <div className="space-y-3">
                 {googleEvents.length > 0 ? googleEvents.map(event => (
-                  <div key={event.id} className="p-3 bg-white rounded-2xl border-2 shadow-sm">
-                    <p className="font-semibold text-slate-800">{event.summary || "Untitled Event"}</p>
-                    <p className="text-xs text-slate-500 mt-1">
+                  <div key={event.id} className="p-5 bg-slate-800/40 rounded-3xl border border-slate-700/50 shadow-sm backdrop-blur-sm">
+                    <p className="font-bold text-white text-lg">{event.summary || "Untitled Event"}</p>
+                    <p className="text-sm text-slate-400 mt-2 flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4" />
                       {event.start?.dateTime ? new Date(event.start.dateTime).toLocaleString() : 'All day'}
                     </p>
                     {event.hangoutLink && (
-                      <a href={event.hangoutLink} target="_blank" className="text-xs text-blue-600 hover:underline mt-1 inline-flex items-center gap-1">
-                        <ExternalLink className="w-3 h-3" /> Meet Link
+                      <a href={event.hangoutLink} target="_blank" className="inline-flex items-center gap-2 px-4 py-2 mt-4 bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 text-sm font-bold rounded-2xl transition-colors">
+                        <ExternalLink className="w-4 h-4" /> Join Google Meet
                       </a>
                     )}
                   </div>
@@ -660,14 +673,16 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="space-y-4">
-              <h4 className="font-bold text-slate-700 flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Pending Tasks</h4>
+              <h4 className="font-bold text-orange-300 flex items-center gap-2 uppercase tracking-widest text-sm"><TrendingUp className="w-4 h-4"/> Pending Tasks</h4>
               <div className="space-y-3">
                 {googleTasks.length > 0 ? googleTasks.map(task => (
-                  <div key={task.id} className="p-3 bg-white rounded-2xl border-2 shadow-sm flex items-start gap-3">
-                    <div className="w-4 h-4 border-2 rounded-full mt-1 border-slate-300"></div>
+                  <div key={task.id} className="p-5 bg-slate-800/40 rounded-3xl border border-slate-700/50 shadow-sm flex items-start gap-4 backdrop-blur-sm">
+                    <div className="w-6 h-6 border-2 rounded-full mt-0.5 border-slate-500 flex-shrink-0 flex items-center justify-center">
+                       {/* Empty task circle */}
+                    </div>
                     <div>
-                      <p className="font-semibold text-slate-800">{task.title}</p>
-                      {task.due && <p className="text-xs text-slate-500 mt-1">Due: {new Date(task.due).toLocaleDateString()}</p>}
+                      <p className="font-bold text-white text-lg">{task.title}</p>
+                      {task.due && <p className="text-sm text-slate-400 mt-1 font-medium">Due: {new Date(task.due).toLocaleDateString()}</p>}
                     </div>
                   </div>
                 )) : <p className="text-sm text-slate-500">No pending tasks found.</p>}
@@ -681,40 +696,44 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
           {
-            label: "Total Earnings",
+            label: "Net Earnings",
             value: `$${stats.totalEarnings.toFixed(2)}`,
             icon: DollarSign,
-            color: "bg-green-500",
+            color: "text-green-600",
+            bg: "bg-green-100",
             tooltip: "Total revenue from all paid and confirmed bookings after fees.",
           },
           {
             label: "Total Bookings",
             value: stats.totalBookings,
             icon: Users,
-            color: "bg-blue-500",
+            color: "text-indigo-600",
+            bg: "bg-indigo-100",
             tooltip: "Total number of booking requests received, including pending and cancelled.",
           },
           {
             label: "Avg Rating",
             value: stats.avgRating > 0 ? `${stats.avgRating} / 5` : "N/A",
             icon: Star,
-            color: "bg-yellow-500",
+            color: "text-orange-600",
+            bg: "bg-orange-100",
             tooltip: "Average star rating from client feedback.",
           },
         ].map((item, i) => (
           <div key={i} className="group relative">
-            <Card className="rounded-3xl border-2 hover:border-primary/20 transition-colors cursor-help">
-              <CardContent className="pt-6 flex items-center gap-4">
-                <div className={`p-3 rounded-2xl ${item.color} text-white shadow-lg`}>
-                  <item.icon className="w-6 h-6" />
+            <Card className="rounded-[2.5rem] border-0 bg-slate-50 hover:bg-slate-100 transition-colors cursor-help relative overflow-hidden shadow-sm">
+              <CardContent className="p-8 flex items-center justify-between">
+                <div className="text-left space-y-2 z-10 relative">
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{item.label}</p>
+                  <h3 className="text-5xl font-display font-black text-slate-900">{item.value}</h3>
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-slate-500">{item.label}</p>
-                  <h3 className="text-2xl font-bold">{item.value}</h3>
+                <div className={`p-4 rounded-[2rem] ${item.bg} ${item.color} shadow-sm z-10 relative`}>
+                  <item.icon className="w-8 h-8" />
                 </div>
+                <div className={`absolute -right-6 -top-6 w-32 h-32 ${item.bg} rounded-full opacity-50 blur-3xl pointer-events-none`} />
               </CardContent>
             </Card>
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none shadow-xl text-center">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-white text-xs rounded-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none shadow-xl text-center">
               {item.tooltip}
               <div className="absolute top-full left-1/2 -translate-x-1/2 border-slate-900 border-4 border-l-transparent border-r-transparent border-b-transparent"></div>
             </div>
@@ -792,7 +811,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden flex flex-col">
+         <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden flex flex-col">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2">
                <Star className="w-5 h-5 text-yellow-500" />
@@ -815,6 +834,38 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Earnings 30 days Chart */}
+      <Card className="rounded-[2.5rem] border-2 shadow-sm overflow-hidden mb-6">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+             <div>
+               <CardTitle className="flex items-center gap-2">
+                 <DollarSign className="w-5 h-5 text-green-500" />
+                 Earnings Overview (30 Days)
+               </CardTitle>
+               <CardDescription>Visualizing revenue trends over the last 30 days</CardDescription>
+             </div>
+          </CardHeader>
+          <CardContent>
+             <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                   <AreaChart data={earningsData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#22c55e" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="dateStr" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} minTickGap={20} />
+                      <YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `$${val}`} />
+                      <RechartsTooltip cursor={{stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3'}} formatter={(val: number) => [`$${val.toFixed(2)}`, 'Earnings']} contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                      <Area type="monotone" dataKey="earnings" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorEarnings)" />
+                   </AreaChart>
+                </ResponsiveContainer>
+             </div>
+          </CardContent>
+        </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar / Upcoming Sessions */}

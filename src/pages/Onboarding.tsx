@@ -18,6 +18,7 @@ export default function Onboarding() {
 
   const [formData, setFormData] = useState<{
     displayName: string,
+    username: string,
     bio: string,
     price: number | '',
     duration: number | '',
@@ -25,6 +26,7 @@ export default function Onboarding() {
     meetingUrl: string
   }>({
     displayName: '',
+    username: '',
     bio: '',
     price: 50,
     duration: 60,
@@ -35,6 +37,11 @@ export default function Onboarding() {
   const handleNext = () => {
     if (step === 1) {
       if (!formData.displayName) return toast.error('Name is required');
+      if (!formData.username) return toast.error('Username is required');
+      // Basic username validation: alphanumeric and underscores only
+      if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+        return toast.error('Username can only contain letters, numbers, and underscores');
+      }
       setStep(2);
     } else if (step === 2) {
       if (formData.price === '' || formData.duration === '' || Number(formData.duration) <= 0 || Number(formData.price) < 0) {
@@ -60,6 +67,7 @@ export default function Onboarding() {
     try {
       await updateDoc(doc(db, 'users', auth.currentUser.uid), {
         displayName: formData.displayName,
+        username: formData.username.toLowerCase(),
         bio: formData.bio,
         pricing: { price: formData.price, currency: 'USD', duration: formData.duration },
         walletAddress: formData.walletAddress,
@@ -99,6 +107,11 @@ export default function Onboarding() {
                  <div className="space-y-2">
                    <Label>Display Name</Label>
                    <Input value={formData.displayName} onChange={e => setFormData({...formData, displayName: e.target.value})} className="h-12 border-2 rounded-xl" placeholder="John Doe" />
+                 </div>
+                 <div className="space-y-2">
+                   <Label>Username</Label>
+                   <Input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value.toLowerCase()})} className="h-12 border-2 rounded-xl" placeholder="johndoe" />
+                   <p className="text-xs text-slate-500">This will be your booking link: gatedmeet.com/johndoe</p>
                  </div>
                  <div className="space-y-2">
                    <Label>Short Bio</Label>
