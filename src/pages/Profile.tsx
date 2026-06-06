@@ -49,7 +49,7 @@ export default function Profile() {
     linkedinUrl: "",
     skills: "",
     proofOfWork: "",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: typeof Intl !== 'undefined' && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC",
     cancellationPolicy:
       "Cancellations must be made at least 24 hours in advance for a full refund.",
     availability: DAYS.reduce(
@@ -130,7 +130,7 @@ export default function Profile() {
           skills: data.skills || "",
           proofOfWork: data.proofOfWork || "",
           timezone:
-            data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+            data.timezone || (typeof Intl !== 'undefined' && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC"),
           cancellationPolicy:
             data.cancellationPolicy ||
             "Cancellations must be made at least 24 hours in advance for a full refund.",

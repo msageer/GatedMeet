@@ -93,7 +93,13 @@ export default function BookingPage() {
           setCreator(userSnap.docs[0].data());
           setCreatorId(userSnap.docs[0].id);
         } else {
-          setError("Creator not found.");
+          const fallbackDoc = await getDoc(doc(db, "users", username));
+          if (fallbackDoc.exists()) {
+            setCreator(fallbackDoc.data());
+            setCreatorId(fallbackDoc.id);
+          } else {
+            setError("Creator not found.");
+          }
         }
         
         if (settingsSnap.exists()) {
