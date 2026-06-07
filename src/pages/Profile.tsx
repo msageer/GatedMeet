@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router-dom";
 import { auth, db, storage } from "@/lib/firebase";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
 import { Plus, X } from "lucide-react";
@@ -28,6 +30,8 @@ const DAYS = [
 ];
 
 export default function Profile() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") || "profile";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>({
@@ -212,7 +216,15 @@ export default function Profile() {
         </p>
       </header>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })} className="w-full mt-4">
+        <TabsList className="mb-6 h-12 w-full justify-start overflow-x-auto rounded-xl bg-slate-100 p-1 flex-wrap md:flex-nowrap">
+          <TabsTrigger value="profile" className="rounded-lg px-6 h-10 data-[state=active]:bg-white font-bold data-[state=active]:text-primary data-[state=active]:shadow-sm">Profile Details</TabsTrigger>
+          <TabsTrigger value="pricing" className="rounded-lg px-6 h-10 data-[state=active]:bg-white font-bold data-[state=active]:text-primary data-[state=active]:shadow-sm">Services & Pricing</TabsTrigger>
+          <TabsTrigger value="availability" className="rounded-lg px-6 h-10 data-[state=active]:bg-white font-bold data-[state=active]:text-primary data-[state=active]:shadow-sm">Availability</TabsTrigger>
+          <TabsTrigger value="integrations" className="rounded-lg px-6 h-10 data-[state=active]:bg-white font-bold data-[state=active]:text-primary data-[state=active]:shadow-sm">Integrations</TabsTrigger>
+        </TabsList>
+        <form onSubmit={handleSave} className="space-y-6">
+          <TabsContent value="profile" className="space-y-6 mt-0">
         <Card className="rounded-[2rem] border-2">
           <CardHeader>
             <CardTitle>Public Information</CardTitle>
@@ -407,7 +419,72 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+        
+        <Card className="rounded-[2rem] border-2">
+          <CardHeader>
+            <CardTitle>Account Settings</CardTitle>
+            <CardDescription>
+              Manage your email and password.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email Address</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={profile.email || auth.currentUser?.email || ""}
+                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  className="h-12 border-2 rounded-xl"
+                  placeholder="name@example.com"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 font-bold px-6 border-2 rounded-xl"
+                  onClick={async () => {
+                     if (!auth.currentUser || !profile.email || profile.email === auth.currentUser.email) return;
+                     const { verifyBeforeUpdateEmail } = await import("firebase/auth");
+                     try {
+                        await verifyBeforeUpdateEmail(auth.currentUser, profile.email);
+                        toast.success("Verification email sent to new address!");
+                     } catch(e: any) {
+                        if (e.code === 'auth/requires-recent-login') {
+                           toast.error("Please log out and log back in to change your email.");
+                        } else {
+                           toast.error("Failed to update email: " + e.message);
+                        }
+                     }
+                  }}
+                >
+                   Update
+                </Button>
+              </div>
+            </div>
+            <div className="pt-2">
+                <Button 
+                   type="button" 
+                   variant="secondary"
+                   className="font-bold border-2 rounded-xl"
+                   onClick={async () => {
+                     if (!auth.currentUser?.email) return;
+                     const { sendPasswordResetEmail } = await import("firebase/auth");
+                     try {
+                       await sendPasswordResetEmail(auth, auth.currentUser.email);
+                       toast.success("Password reset email sent!");
+                     } catch(e: any) {
+                       toast.error("Failed to send reset email.");
+                     }
+                   }}
+                >
+                   Send Password Reset Email
+                </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
 
+      <TabsContent value="pricing" className="space-y-6 mt-0">
         <Card className="rounded-[2rem] border-2">
           <CardHeader>
             <CardTitle>Session & Rates</CardTitle>
@@ -452,7 +529,9 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+      </TabsContent>
 
+      <TabsContent value="availability" className="space-y-6 mt-0">
         <Card className="rounded-[2rem] border-2">
           <CardHeader>
             <CardTitle>Weekly Availability</CardTitle>
@@ -600,7 +679,9 @@ export default function Profile() {
             ))}
           </CardContent>
         </Card>
+          </TabsContent>
 
+          <TabsContent value="integrations" className="space-y-6 mt-0">
         <Card className="rounded-[2rem] border-2 border-blue-100 bg-blue-50/30">
           <CardHeader>
             <CardTitle>Calendar Integration</CardTitle>
@@ -689,69 +770,6 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2rem] border-2">
-          <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
-            <CardDescription>
-              Manage your email and password.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email Address</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  value={profile.email || auth.currentUser?.email || ""}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                  className="h-12 border-2 rounded-xl"
-                  placeholder="name@example.com"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-12 font-bold px-6 border-2 rounded-xl"
-                  onClick={async () => {
-                     if (!auth.currentUser || !profile.email || profile.email === auth.currentUser.email) return;
-                     const { verifyBeforeUpdateEmail } = await import("firebase/auth");
-                     try {
-                        await verifyBeforeUpdateEmail(auth.currentUser, profile.email);
-                        toast.success("Verification email sent to new address!");
-                     } catch(e: any) {
-                        if (e.code === 'auth/requires-recent-login') {
-                           toast.error("Please log out and log back in to change your email.");
-                        } else {
-                           toast.error("Failed to update email: " + e.message);
-                        }
-                     }
-                  }}
-                >
-                   Update
-                </Button>
-              </div>
-            </div>
-            <div className="pt-2">
-                <Button 
-                   type="button" 
-                   variant="secondary"
-                   className="font-bold border-2 rounded-xl"
-                   onClick={async () => {
-                     if (!auth.currentUser?.email) return;
-                     const { sendPasswordResetEmail } = await import("firebase/auth");
-                     try {
-                       await sendPasswordResetEmail(auth, auth.currentUser.email);
-                       toast.success("Password reset email sent!");
-                     } catch(e: any) {
-                       toast.error("Failed to send reset email.");
-                     }
-                   }}
-                >
-                   Send Password Reset Email
-                </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         <Card className="rounded-[2rem] border-2 bg-gradient-to-br from-blue-50 to-blue-100">
           <CardHeader>
             <CardTitle className="text-blue-900">Referral Program</CardTitle>
@@ -801,15 +819,17 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+      </TabsContent>
 
         <Button
           type="submit"
           disabled={saving}
-          className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl shadow-primary/10"
+          className="w-full h-14 rounded-2xl text-lg font-bold shadow-xl shadow-primary/10 mt-6"
         >
-          {saving ? "Saving..." : "Save Profile"}
+          {saving ? "Saving..." : "Save Everything"}
         </Button>
       </form>
+      </Tabs>
     </div>
   );
 }

@@ -598,7 +598,7 @@ export default function Dashboard() {
           </p>
           <div className="flex gap-3 mt-6 flex-wrap">
             <Link
-              to="/dashboard/profile"
+              to="/dashboard/profile?tab=pricing"
               className={buttonVariants({
                 variant: "outline",
                 className: "rounded-2xl font-bold bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700",
@@ -626,7 +626,7 @@ export default function Dashboard() {
             Sync Workspace
           </Button>
           <Link
-            to="/dashboard/profile"
+            to="/dashboard/profile?tab=availability"
             className={buttonVariants({
               className: "rounded-2xl font-bold h-12 px-8 shadow-xl shadow-primary/20",
             })}
